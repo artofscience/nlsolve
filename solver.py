@@ -1,5 +1,6 @@
 import numpy as np
 from copy import deepcopy
+from abc import ABC
 
 
 class IncrementalSolver:
@@ -30,6 +31,7 @@ class IterativeSolver:
     def __init__(self, nonlinear_function, al=True):
         self.nonlinear_function = nonlinear_function
         self.f = self.nonlinear_function.external_load()
+        self.nf = len(self.f)
         self.beta = 0.0
         self.constraint = ArcLength(self.f) if al else NewtonRaphson(self.f)
 
@@ -37,7 +39,7 @@ class IterativeSolver:
 
         p = sol[-1]
         dp = Point(np.zeros_like(p.x), 0.0)
-        ddx = np.zeros((np.shape(p.x)[0], 2), dtype=float)
+        ddx = np.zeros((self.nf, 2), dtype=float)
 
         k = self.nonlinear_function.tangent_stiffness_free_free(p.x)
         ddx[:, 1] = np.linalg.solve(k, -self.f)
@@ -47,7 +49,7 @@ class IterativeSolver:
         while any(abs(r) > 1e-6):
 
             k = self.nonlinear_function.tangent_stiffness_free_free(p.x + dp.x)
-            ddx[:, :] = np.linalg.solve(k, -np.array([r, self.f]))
+            ddx[:, :] = np.linalg.solve(k, -np.array([r, self.f]).T)
             dp += self.constraint.corrector(dp, ddx, alpha)
             r = self.nonlinear_function.residual_free(p.x + dp.x, p.y + dp.y)
 
@@ -114,6 +116,34 @@ class ArcLength(NewtonRaphson):
             vec2 = np.append(sol[-2].x - p.x - cps[1].x, sol[-2].y - p.y - cps[1].y)
 
             return cps[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1]
+
+class Structure(ABC):
+    def external_load(self):
+        return None
+
+    def prescribed_motion(self):
+        return None
+
+    def internal_load_free(self, state, alpha):
+        return None
+
+    def internal_load_prescribed(self, state, alpha):
+        return None
+
+    def residual_free(self, state, alpha):
+        return self.internal_load_free(state, alpha) + alpha * self.external_load()
+
+    def tangent_stiffness_free_free(self, state):
+        return None
+
+    def tangent_stiffness_free_prescribed(self, state):
+        return None
+
+    def tangent_stiffness_prescribed_free(self, state):
+        return None
+
+    def tangent_stiffness_prescribed_prescribed(self, state):
+        return None
 
 
 class Point:
