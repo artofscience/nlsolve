@@ -17,7 +17,7 @@ class InvolvedTrussProblemLoadBased:
         return np.array([f1, self.w * (state[1] - state[0])])
 
     def residual_free(self, state, alpha):
-        return self.internal_load_free(state) + self.external_load(alpha)
+        return self.internal_load_free(state) + alpha * self.external_load()
 
     def tangent_stiffness_free_free(self, state):
         a1 = state[0]
@@ -39,9 +39,6 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblemLoadBased):
 
     def internal_load_free(self, state, alpha):
         return (1 / np.sqrt(1 - 2 * state[0] * sin(self.theta0) + state[0] ** 2) - 1) * (sin(self.theta0) - state[0]) - self.w * (alpha * self.prescribed_motion() - state[0])
-
-    def residual_free(self, state, alpha):
-        return self.internal_load_free(state) + self.external_load(alpha)
 
     def tangent_stiffness_free_free(self, state):
         a1 = state[0]
