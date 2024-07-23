@@ -23,19 +23,23 @@ class IncrementalSolver:
 
         equilibrium_solutions.append(p)
 
+        incremental_counter = 0
+        iterative_counter = 0
+        tries_storage = []
         while p.y <= 1.0:
+            incremental_counter += 1
 
-            dp = self.solution_method(equilibrium_solutions, self.alpha)
+            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.alpha)
+            iterative_counter += iterates
+            tries_storage.append(tries)
 
             p = p + dp
             equilibrium_solutions.append(p)
-            # print(p.u)
-            # print(p.v)
-            # print(p.f)
-            # print(p.p)
-            # print(p.y)
 
-        return equilibrium_solutions
+        print("Number of increments: %d" % incremental_counter)
+        print("Total number of iterates: %d" % iterative_counter)
+
+        return equilibrium_solutions, tries_storage
 
 
 class IterativeSolver:
@@ -69,15 +73,19 @@ class IterativeSolver:
         if self.np:
             r = np.append(r, self.nonlinear_function.residual_prescribed(p + dp))
 
-        count = 0
-        while np.any(np.abs(r) > 1e-6):
-            count += 1
+        tries = [p]
+
+        iterative_counter = 0
+        while np.any(np.abs(r) > 1e-3):
+            iterative_counter += 1
 
             if self.nf:
                 k = self.nonlinear_function.tangent_stiffness_free_free(p + dp)
                 ddx[:, :] = np.linalg.solve(k, -np.array([rf, self.f]).T)
 
             dp += self.constraint.corrector(p, dp, ddx, alpha)
+
+            tries.append(p + dp)
 
             r = np.array([])
             if self.nf:
@@ -86,11 +94,8 @@ class IterativeSolver:
             if self.np:
                 r = np.append(r, self.nonlinear_function.residual_prescribed(p + dp))
 
-
-            # print(r)
-
-        print("Number of corrections: %d" % count)
-        return dp
+        print("Number of corrections: %d" % iterative_counter)
+        return dp, iterative_counter, tries
 
     class NewtonRaphson:
         def __init__(self, nonlinear_function, nf, np):
@@ -127,7 +132,9 @@ class IterativeSolver:
             return point
 
     class ArcLength(NewtonRaphson):
-        beta = 1.0
+        def __init__(self, nonlinear_function, nf, np, beta=1.0):
+            super().__init__(nonlinear_function, nf, np)
+            self.beta = beta
 
         def predictor(self, p, dp, ddx, alpha, sol):
             cps = self.get_roots(p, dp, ddx, alpha)
@@ -142,21 +149,26 @@ class IterativeSolver:
 
             a[2] -= dl**2
             if self.nf:
+                ff = np.dot(self.a.external_load(), self.a.external_load())
                 a[0] += np.dot(u[:, 1], u[:, 1])
-                a[0] += self.beta**2 * np.dot(self.a.external_load(), self.a.external_load())
+                a[0] += self.beta**2 * ff
                 a[1] += 2 * np.dot(u[:, 1], dp.u + u[:, 0])
                 a[1] += 2 * self.beta**2 * np.dot(dp.f, self.a.external_load())
                 a[2] += np.dot(dp.u + u[:, 0], dp.u + u[:, 0])
                 a[2] += self.beta**2 * np.dot(dp.f, dp.f)
             if self.np:
-                a[0] += np.dot(self.a.prescribed_motion(), self.a.prescribed_motion())
+                vv = np.dot(self.a.prescribed_motion(), self.a.prescribed_motion())
+                Dv = self.a.tangent_stiffness_prescribed_prescribed(p + dp) @ self.a.prescribed_motion()
+                a[0] += vv
                 a[1] += 2 * np.dot(self.a.prescribed_motion(), dp.v)
                 a[2] += np.dot(dp.v, dp.v)
-                tmpa = self.a.tangent_stiffness_prescribed_prescribed(p+dp) @ self.a.prescribed_motion()
+                tmpa = Dv
                 tmpc = dp.p - self.a.residual_prescribed(p + dp)
                 if self.nf:
-                    tmpa += self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 1]
-                    tmpc -= self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 0]
+                    Cx = self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 0]
+                    Cy = self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 1]
+                    tmpa += Cy
+                    tmpc -= Cx
                 a[0] += self.beta**2 * np.dot(tmpa, tmpa)
                 a[1] -= 2 * self.beta**2 * np.dot(tmpa, tmpc)
                 a[2] += self.beta**2 * np.dot(tmpc, tmpc)
@@ -166,17 +178,18 @@ class IterativeSolver:
 
             y = (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-            if not self.np:
+            if self.np is not None and self.nf is None:
+
+                ddp = [-self.a.residual_prescribed(p + dp) - y[i] * Dv for i in range(2)]
+                return [Point(v=y[i] * self.a.prescribed_motion(), p=ddp[i], y=y[i]) for i in range(2)]
+            if self.nf is not None and self.np is None:
                 x = [u[:, 0] + i * u[:, 1] for i in y]
 
                 return [Point(u=x[i], f=y[i] * self.a.external_load(), y=y[i]) for i in range(2)]
-            elif not self.nf:
-                ddp = [-self.a.residual_prescribed(p + dp) - y[i] * self.a.tangent_stiffness_prescribed_prescribed(p + dp) @ self.a.prescribed_motion() for i in range(2)]
-                return [Point(v=y[i] * self.a.prescribed_motion(), p=ddp[i], y=y[i]) for i in range(2)]
-            else:
+            if self.nf is not None and self.np is not None:
                 x = [u[:, 0] + i * u[:, 1] for i in y]
 
-                ddp = [-self.a.residual_prescribed(p + dp) - self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 0] - y[i] * (self.a.tangent_stiffness_prescribed_free(p + dp) @ u[:, 1] + self.a.tangent_stiffness_prescribed_prescribed(p + dp) @ self.a.prescribed_motion()) for i in range(2)]
+                ddp = [-self.a.residual_prescribed(p + dp) - Cx - y[i] * (Cy + Dv) for i in range(2)]
                 return [Point(u=x[i], v=y[i] * self.a.prescribed_motion(), f=y[i] * self.a.external_load(), p=ddp[i], y=y[i]) for i in range(2)]
 
         def select_root_corrector(self, dp, cps):
