@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 
 class InvolvedTrussProblemLoadBased(Structure):
-    w = 1.0
+    w = 0.5
     theta0 = pi/3
 
     def external_load(self):
@@ -26,7 +26,7 @@ class InvolvedTrussProblemLoadBased(Structure):
 class InvolvedTrussProblemMotionBased(InvolvedTrussProblemLoadBased):
 
     def prescribed_motion(self):
-        return np.array([3.0])
+        return np.array([4.0])
 
     def external_load(self):
         return np.array([0.0])
@@ -53,40 +53,69 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblemLoadBased):
 
 
 if __name__ == "__main__":
+
+    print("Load-based NR")
     solution_method1 = IterativeSolver(InvolvedTrussProblemLoadBased(), al=False)
     solver1 = IncrementalSolver(solution_method1)
-    solution1 = solver1()
+    solution1, tries1 = solver1()
 
+    for a in tries1:
+        plt.plot([i.u[1] for i in a], [-i.f[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.u[0] for i in a], [-i.f[1] for i in a], 'ko', alpha=0.1)
     b = [-i.f[1] for i in solution1]
     a = [i.u[1] for i in solution1]
+    c = [i.u[0] for i in solution1]
     plt.plot(a, b, 'ro')
+    plt.plot(c, b, 'ro')
     for i in solution1:
         plt.axhline(y=i.y, color='r')
 
+    print("Load-based ARC")
+
     solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased())
-    solver2 = IncrementalSolver(solution_method2, alpha=0.2)
-    solution2 = solver2()
+    solver2 = IncrementalSolver(solution_method2, alpha=0.3)
+    solution2, tries2 = solver2()
+
+    for a in tries2:
+        plt.plot([i.u[1] for i in a], [-i.f[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.u[0] for i in a], [-i.f[1] for i in a], 'ko', alpha=0.1)
+
 
     b = [-i.f[1] for i in solution2]
     a = [i.u[1] for i in solution2]
+    c = [i.u[0] for i in solution2]
+
     plt.plot(a, b, 'go')
+    plt.plot(c, b, 'go')
 
+    print("Motion-based NR")
     solution_method3 = IterativeSolver(InvolvedTrussProblemMotionBased(), al=False)
-    solver3 = IncrementalSolver(solution_method3)
-    solution3 = solver3()
+    solver3 = IncrementalSolver(solution_method3, alpha=0.1)
+    solution3, tries3 = solver3()
 
-    a = [i.v for i in solution3]
-    b = [-i.p for i in solution3]
-    plt.plot(a, b, 'bo')
+    for a in tries3:
+        plt.plot([i.v for i in a], [-i.p for i in a], 'ko', alpha=0.1)
+        plt.plot([i.u for i in a], [-i.p for i in a], 'ko', alpha=0.1)
+
+    plt.plot([i.v for i in solution3], [-i.p for i in solution3], 'bo')
+    plt.plot([i.u for i in solution3], [-i.p for i in solution3], 'bo')
+
     for i in solution3:
         plt.axvline(x=i.v, color='b')
 
+    print("Motion-based ARC")
+
     solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased())
     solver4 = IncrementalSolver(solution_method4, alpha=0.2)
-    solution4 = solver4()
+    solution4, tries4 = solver4()
+
+    for a in tries4:
+        plt.plot([i.v for i in a], [-i.p for i in a], 'ko', alpha=0.1)
 
     a = [i.v for i in solution4]
     b = [-i.p for i in solution4]
     plt.plot(a, b, 'bo')
 
+
+    plt.gca().axis('equal')
     plt.show()
