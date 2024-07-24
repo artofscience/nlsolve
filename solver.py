@@ -4,8 +4,8 @@ from abc import ABC
 
 
 class IncrementalSolver:
-    def __init__(self, solution_method, alpha=0.1):
-        self.alpha = alpha
+    def __init__(self, solution_method, dl=0.1):
+        self.dl = dl
         self.solution_method = solution_method
         self.nf = np.shape(self.solution_method.nonlinear_function.external_load())[0] if self.solution_method.nonlinear_function.external_load() is not None else None
         self.np = np.shape(self.solution_method.nonlinear_function.prescribed_motion())[0] if self.solution_method.nonlinear_function.prescribed_motion() is not None else None
@@ -29,7 +29,7 @@ class IncrementalSolver:
         while p.y <= 1.0:
             incremental_counter += 1
 
-            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.alpha)
+            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.dl)
             iterative_counter += iterates
             tries_storage.append(tries)
 
@@ -53,7 +53,7 @@ class IterativeSolver:
 
         self.constraint = self.ArcLength(self.nonlinear_function, self.nf, self.np) if al else self.NewtonRaphson(self.nonlinear_function, self.nf, self.np)
 
-    def __call__(self, sol, alpha=1.0):
+    def __call__(self, sol, dl=1.0):
 
         p = sol[-1]
 
@@ -62,9 +62,12 @@ class IterativeSolver:
 
         if self.nf:
             k = self.nonlinear_function.tangent_stiffness_free_free(p)
-            ddx[:, 1] = np.linalg.solve(k, -self.f) if any(self.f) != 0.0 else 0.0
+            load = 1.0 * self.f
+            if self.np:
+                load += self.nonlinear_function.tangent_stiffness_free_prescribed(p) @ self.v
+            ddx[:, 1] = np.linalg.solve(k, -load)
 
-        dp += self.constraint.predictor(p, dp, ddx, alpha, sol)
+        dp += self.constraint.predictor(p, dp, ddx, dl, sol)
 
         r = np.array([])
         if self.nf:
@@ -81,9 +84,12 @@ class IterativeSolver:
 
             if self.nf:
                 k = self.nonlinear_function.tangent_stiffness_free_free(p + dp)
-                ddx[:, :] = np.linalg.solve(k, -np.array([rf, self.f]).T)
+                load = 1.0 * self.f
+                if self.np:
+                    load += self.nonlinear_function.tangent_stiffness_free_prescribed(p + dp) @ self.v
+                ddx[:, :] = np.linalg.solve(k, -np.array([rf, load]).T)
 
-            dp += self.constraint.corrector(p, dp, ddx, alpha)
+            dp += self.constraint.corrector(p, dp, ddx, dl)
 
             tries.append(p + dp)
 
@@ -103,22 +109,30 @@ class IterativeSolver:
             self.nf = nf
             self.np = np
 
-        def predictor(self, p, dp, ddx, alpha, sol):
+        def predictor(self, p, dp, ddx, dl, sol):
 
-            point = Point(y=alpha)
+            load = 0.0
+            if self.np:
+                load += np.dot(self.a.prescribed_motion(), self.a.prescribed_motion())
+            if self.nf:
+                load += np.dot(self.a.external_load(), self.a.external_load())
+
+            ddy = dl / np.sqrt(load)
+
+            point = Point(y=ddy)
 
             if self.nf:
-                point.u += alpha * ddx[:, 1]
-                point.f += alpha * self.a.external_load()
+                point.u += ddy * ddx[:, 1]
+                point.f += ddy * self.a.external_load()
             if self.np:
-                point.v = alpha * self.a.prescribed_motion()
+                point.v = ddy * self.a.prescribed_motion()
                 point.p = -self.a.tangent_stiffness_prescribed_prescribed(p) @ point.v
                 if self.nf:
-                    point.p -= alpha * self.a.tangent_stiffness_prescribed_free(p) @ ddx[:, 1]
+                    point.p -= ddy * self.a.tangent_stiffness_prescribed_free(p) @ ddx[:, 1]
 
             return point
 
-        def corrector(self, p, dp, ddx, alpha):
+        def corrector(self, p, dp, ddx, dl):
 
             point = Point()
 
@@ -232,7 +246,6 @@ class IterativeSolver:
 
                 return cps[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1]
 
-
         def select_root_predictor_feng(self, p, dp, ddx, cps):
             """Secant path procedure proposed by Feng et al.
             The secant path method does not rely on quantities which are related to the tangent matrix,
@@ -276,6 +289,7 @@ class Structure(ABC):
 
     def tangent_stiffness_free_prescribed(self, p):
         return None
+
     def tangent_stiffness_prescribed_free(self, p):
         return None
 
