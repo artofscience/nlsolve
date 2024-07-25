@@ -1,6 +1,6 @@
 import numpy as np
 from math import pi, sin
-from solver import NewtonRaphson, ArcLength
+from constraints import NewtonRaphson, ArcLength
 from solver import IncrementalSolver, IterativeSolver, Structure
 from matplotlib import pyplot as plt
 from solver import Point
