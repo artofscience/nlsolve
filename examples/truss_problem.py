@@ -1,7 +1,9 @@
 import numpy as np
 from math import pi, sin
+from solver import NewtonRaphson, ArcLength
 from solver import IncrementalSolver, IterativeSolver, Structure
 from matplotlib import pyplot as plt
+from solver import Point
 
 
 class TrussProblemLoadBased(Structure):
@@ -36,9 +38,10 @@ class TrussProblemMotionBased(Structure):
 
 
 if __name__ == "__main__":
-    solution_method1 = IterativeSolver(TrussProblemMotionBased(), al=False)
+    constraint1 = NewtonRaphson(TrussProblemMotionBased())
+    solution_method1 = IterativeSolver(constraint1)
     solver1 = IncrementalSolver(solution_method1)
-    solution1, tries1 = solver1()
+    solution1, tries1 = solver1(Point(v=np.array([0.0]), p=np.array([0.0])))
 
     for a in tries1:
         plt.plot([i.u for i in a], [i.f for i in a], 'ko', alpha=0.1)
@@ -48,9 +51,10 @@ if __name__ == "__main__":
     for i in solution1:
         plt.axvline(x=i.v, color='b', alpha=0.1)
 
-    solution_method2 = IterativeSolver(TrussProblemLoadBased(), al=False)
+    constraint2 = NewtonRaphson(TrussProblemLoadBased())
+    solution_method2 = IterativeSolver(constraint2)
     solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2()
+    solution2, tries2 = solver2(Point(u=np.array([0.0]), f=np.array([0.0])))
 
     for a in tries2:
         plt.plot([i.u for i in a], [i.f for i in a], 'ko', alpha=0.1)
@@ -59,26 +63,28 @@ if __name__ == "__main__":
     for i in solution2:
         plt.axhline(y=i.f, color='r', alpha=0.1)
 
-    solution_method3 = IterativeSolver(TrussProblemLoadBased())
-    solver3 = IncrementalSolver(solution_method3, alpha=0.3)
-    solution3, tries3 = solver3()
+    constraint3 = ArcLength(TrussProblemLoadBased())
+    solution_method3 = IterativeSolver(constraint3)
+    solver3 = IncrementalSolver(solution_method3)
+    solution3, tries3 = solver3(Point(u=np.array([0.0]), f=np.array([0.0])))
 
 
     for a in tries3:
         plt.plot([i.u for i in a], [i.f for i in a], 'ko', alpha=0.1)
     plt.plot([i.u for i in solution3], [i.f for i in solution3], 'go')
     for i in solution3:
-        plt.gca().add_patch(plt.Circle((i.u, i.f), 0.3, color='r', fill=False, alpha=0.1))
+        plt.gca().add_patch(plt.Circle((i.u, i.f), 0.1, color='r', fill=False, alpha=0.1))
 
-    solution_method4 = IterativeSolver(TrussProblemMotionBased())
-    solver4 = IncrementalSolver(solution_method4, alpha=0.3)
-    solution4, tries4 = solver4()
+    constraint4 = ArcLength(TrussProblemMotionBased())
+    solution_method4 = IterativeSolver(constraint4)
+    solver4 = IncrementalSolver(solution_method4)
+    solution4, tries4 = solver4(Point(v=np.array([0.0]), p=np.array([0.0])))
 
     for a in tries4:
         plt.plot([i.u for i in a], [i.f for i in a], 'ko', alpha=0.1)
     plt.plot([i.v for i in solution4], [i.p for i in solution4], 'ko')
     for i in solution4:
-        plt.gca().add_patch(plt.Circle((i.v, i.p), 0.3, color='r', fill=False, alpha=0.1))
+        plt.gca().add_patch(plt.Circle((i.v, i.p), 0.1, color='r', fill=False, alpha=0.1))
 
     plt.gca().axis('equal')
     plt.show()
