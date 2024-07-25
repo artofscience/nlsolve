@@ -5,26 +5,35 @@ from solver import IncrementalSolver, IterativeSolver, Structure, Point
 from matplotlib import pyplot as plt
 
 
-class InvolvedTrussProblemLoadBased(Structure):
-    w = 0.5
-    theta0 = pi/3
+class InvolvedTrussProblem(Structure):
+    w = 0.25
+    theta0 = pi/2.5
 
-    def external_load(self):
-        return np.array([0, -1.0], dtype=float)
+    def internal_load(self, a1, a2):
+        f1 = (1 / np.sqrt(1 - 2 * a1 * sin(self.theta0) + a1 ** 2) - 1) * (
+                    sin(self.theta0) - a1) - self.w * (a2 - a1)
+        return np.array([f1, self.w * (a2 - a1)])
 
-    def internal_load_free(self, p):
-        f1 = (1 / np.sqrt(1 - 2 * p.u[0] * sin(self.theta0) + p.u[0] ** 2) - 1) * (sin(self.theta0) - p.u[0]) - self.w * (p.u[1] - p.u[0])
-        return np.array([f1, self.w * (p.u[1] - p.u[0])])
-
-    def tangent_stiffness_free_free(self, p):
-        a1 = p.u[0]
+    def tangent_stiffness(self, a1):
         df1da1 = self.w - 1 / (a1 ** 2 - 2 * sin(self.theta0) * a1 + 1) ** (1 / 2) + (
                 (a1 - sin(self.theta0)) * (2 * a1 - 2 * sin(self.theta0))) / (
                          2 * (a1 ** 2 - 2 * sin(self.theta0) * a1 + 1) ** (3 / 2)) + 1
         return np.array([[df1da1, -self.w], [-self.w, self.w]], dtype=float)
 
 
-class InvolvedTrussProblemMotionBased(InvolvedTrussProblemLoadBased):
+class InvolvedTrussProblemLoadBased(InvolvedTrussProblem):
+
+    def external_load(self):
+        return np.array([0, -0.5], dtype=float)
+
+    def internal_load_free(self, p):
+        return super().internal_load(p.u[0], p.u[1])
+
+    def tangent_stiffness_free_free(self, p):
+        return super().tangent_stiffness(p.u[0])
+
+
+class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
 
     def prescribed_motion(self):
         return np.array([4.0])
@@ -33,24 +42,23 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblemLoadBased):
         return np.array([0.0])
 
     def internal_load_prescribed(self, p):
-        return self.w * (p.v - p.u)
+        return super().internal_load(p.u, p.v)[1]
 
     def internal_load_free(self, p):
-        return (1 / np.sqrt(1 - 2 * p.u * sin(self.theta0) + p.u ** 2) - 1) * (sin(self.theta0) - p.u) - self.w * (p.v - p.u)
+        return super().internal_load(p.u, p.v)[0]
 
     def tangent_stiffness_free_free(self, p):
-        return np.array([self.w - 1 / (p.u ** 2 - 2 * sin(self.theta0) * p.u + 1) ** (1 / 2) + (
-                (p.u - sin(self.theta0)) * (2 * p.u - 2 * sin(self.theta0))) / (
-                         2 * (p.u ** 2 - 2 * sin(self.theta0) * p.u + 1) ** (3 / 2)) + 1])
+        return np.array([[super().tangent_stiffness(p.u[0])[0, 0]]])
 
     def tangent_stiffness_prescribed_prescribed(self, p):
-        return np.array([self.w])
+        a=  np.array([super().tangent_stiffness(p.u[0])[1, 1]])
+        return a
 
     def tangent_stiffness_free_prescribed(self, p):
-        return np.array([-self.w])
+        return np.array([super().tangent_stiffness(p.u[0])[1, 0]])
 
     def tangent_stiffness_prescribed_free(self, p):
-        return np.array([-self.w])
+        return np.array([super().tangent_stiffness(p.u[0])[0, 1]])
 
 
 if __name__ == "__main__":
@@ -67,8 +75,8 @@ if __name__ == "__main__":
     b = [-i.f[1] for i in solution1]
     a = [i.u[1] for i in solution1]
     c = [i.u[0] for i in solution1]
-    plt.plot(a, b, 'ro')
-    plt.plot(c, b, 'ro')
+    plt.plot(a, b, 'ro', alpha=0.5)
+    plt.plot(c, b, 'ro', alpha=0.5)
     for i in solution1:
         plt.axhline(y=i.y, color='r')
 
@@ -87,8 +95,8 @@ if __name__ == "__main__":
     a = [i.u[1] for i in solution2]
     c = [i.u[0] for i in solution2]
 
-    plt.plot(a, b, 'go')
-    plt.plot(c, b, 'go')
+    plt.plot(a, b, 'go', alpha=0.5)
+    plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based NR")
     constraint3 = NewtonRaphson(InvolvedTrussProblemMotionBased())
@@ -100,8 +108,8 @@ if __name__ == "__main__":
         plt.plot([i.v for i in a], [-i.p for i in a], 'ko', alpha=0.1)
         plt.plot([i.u for i in a], [-i.p for i in a], 'ko', alpha=0.1)
 
-    plt.plot([i.v for i in solution3], [-i.p for i in solution3], 'bo')
-    plt.plot([i.u for i in solution3], [-i.p for i in solution3], 'bo')
+    plt.plot([i.v for i in solution3], [-i.p for i in solution3], 'bo', alpha=0.5)
+    plt.plot([i.u for i in solution3], [-i.p for i in solution3], 'bo', alpha=0.5)
 
     for i in solution3:
         plt.axvline(x=i.v, color='b')
@@ -120,8 +128,8 @@ if __name__ == "__main__":
     c = [i.u for i in solution4]
 
     b = [-i.p for i in solution4]
-    plt.plot(a, b, 'co')
-    plt.plot(c, [-i.p for i in solution4], 'co')
+    plt.plot(a, b, 'co', alpha=0.5)
+    plt.plot(c, [-i.p for i in solution4], 'co', alpha=0.5)
 
 
 

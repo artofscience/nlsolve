@@ -6,35 +6,40 @@ from matplotlib import pyplot as plt
 from solver import Point
 
 
-class TrussProblemLoadBased(Structure):
+class TrussProblem(Structure):
     theta0 = pi/3
+
+    def internal_load(self, a):
+        return (1 / np.sqrt(1 - 2 * a * sin(self.theta0) + a ** 2) - 1) * (sin(self.theta0) - a)
+
+    def tangent_stiffness(self, a):
+        return np.array([- 1 / (a ** 2 - 2 * sin(self.theta0) * a + 1) ** (1 / 2) + (
+                (a - sin(self.theta0)) * (2 * a - 2 * sin(self.theta0))) / (
+                         2 * (a ** 2 - 2 * sin(self.theta0) * a + 1) ** (3 / 2)) + 1])
+
+
+class TrussProblemLoadBased(TrussProblem):
 
     def external_load(self):
         return np.array([-2.0], dtype=float)
 
     def internal_load_free(self, p):
-        return (1 / np.sqrt(1 - 2 * p.u * sin(self.theta0) + p.u ** 2) - 1) * (sin(self.theta0) - p.u)
+        return super().internal_load(p.u)
 
     def tangent_stiffness_free_free(self, p):
-        return np.array([- 1 / (p.u ** 2 - 2 * sin(self.theta0) * p.u + 1) ** (1 / 2) + (
-                (p.u - sin(self.theta0)) * (2 * p.u - 2 * sin(self.theta0))) / (
-                         2 * (p.u ** 2 - 2 * sin(self.theta0) * p.u + 1) ** (3 / 2)) + 1])
+        return super().tangent_stiffness(p.u)
 
 
-class TrussProblemMotionBased(Structure):
-    theta0 = pi/3
+class TrussProblemMotionBased(TrussProblem):
 
     def prescribed_motion(self):
         return np.array([3.0], dtype=float)
 
     def internal_load_prescribed(self, p):
-        return (1 / np.sqrt(1 - 2 * p.v * sin(self.theta0) + p.v ** 2) - 1) * (sin(self.theta0) - p.v)
+        return super().internal_load(p.v)
 
     def tangent_stiffness_prescribed_prescribed(self, p):
-        state = p.v
-        return np.array([- 1 / (state ** 2 - 2 * sin(self.theta0) * state + 1) ** (1 / 2) + (
-                (state - sin(self.theta0)) * (2 * state - 2 * sin(self.theta0))) / (
-                         2 * (state ** 2 - 2 * sin(self.theta0) * state + 1) ** (3 / 2)) + 1])
+        return super().tangent_stiffness(p.v)
 
 
 if __name__ == "__main__":
