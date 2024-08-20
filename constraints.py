@@ -19,12 +19,12 @@ class NewtonRaphson(Constraint):
         point = Point(y=ddy)
 
         if self.nf:
-            point.u += ddy * ddx[:, 1]
-            point.f += ddy * self.f
+            point.uf += ddy * ddx[:, 1]
+            point.ff += ddy * self.f
         if self.np:
-            point.v = ddy * self.v
-            point.p = -self.Kpp(p) @ point.v
-            point.p -= ddy * self.Kpf(p) @ ddx[:, 1] if self.nf else 0.0
+            point.up = ddy * self.v
+            point.fp = -self.Kpp(p) @ point.up
+            point.fp -= ddy * self.Kpf(p) @ ddx[:, 1] if self.nf else 0.0
 
         return point
 
@@ -33,10 +33,10 @@ class NewtonRaphson(Constraint):
         point = Point()
 
         if self.nf:
-            point.u += ddx[:, 0]
+            point.uf += ddx[:, 0]
         if self.np:
-            point.p = -self.rp(p + dp)
-            point.p -= self.Kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
+            point.fp = -self.rp(p + dp)
+            point.fp -= self.Kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
 
         return point
 
@@ -75,16 +75,16 @@ class ArcLength(Constraint):
         if self.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta**2 * self.f2
-            a[1] += 2 * np.dot(u[:, 1], dp.u + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.f, self.f)
-            a[2] += np.dot(dp.u + u[:, 0], dp.u + u[:, 0])
-            a[2] += self.beta**2 * np.dot(dp.f, dp.f)
+            a[1] += 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[2] += np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
+            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.v)
-            a[2] += np.dot(dp.v, dp.v)
+            a[1] += 2 * np.dot(self.v, dp.up)
+            a[2] += np.dot(dp.up, dp.up)
             tmpa = self.Kpp(p + dp) @ self.v
-            tmpc = dp.p - self.a.residual_prescribed(p + dp)
+            tmpc = dp.fp - self.a.residual_prescribed(p + dp)
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
                 tmpc -= self.Kpf(p + dp) @ u[:, 0]
@@ -100,15 +100,15 @@ class ArcLength(Constraint):
     def get_point(self, p: Point, dp: Point, u: np.ndarray, y: np.ndarray) -> List[Point]:
         if self.np is not None and self.nf is None:
             ddp = [-self.rp(p + dp) - y[i] * self.Kpp(p + dp) @ self.v for i in range(2)]
-            return [Point(v=y[i] * self.v, p=ddp[i], y=y[i]) for i in range(2)]
+            return [Point(up=y[i] * self.v, fp=ddp[i], y=y[i]) for i in range(2)]
         if self.nf is not None:
             x = [u[:, 0] + i * u[:, 1] for i in y]
             if self.np is None:
-                return [Point(u=x[i], f=y[i] * self.f, y=y[i]) for i in range(2)]
+                return [Point(uf=x[i], ff=y[i] * self.f, y=y[i]) for i in range(2)]
             else:
                 ddp = [-self.rp(p + dp) - self.Kpf(p + dp) @ u[:, 0] - y[i] * (
                             self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.v) for i in range(2)]
-                return [Point(u=x[i], v=y[i] * self.v, f=y[i] * self.f, p=ddp[i], y=y[i]) for i in range(2)]
+                return [Point(uf=x[i], up=y[i] * self.v, ff=y[i] * self.f, fp=ddp[i], y=y[i]) for i in range(2)]
 
     def select_root_corrector(self, dp: Point, cps: List[Point]) -> Point:
         """
@@ -117,11 +117,11 @@ class ArcLength(Constraint):
         Note: this rule cannot be used in the first iteration since the initial corrections are equal to zero at the beginning of each increment.
         """
         if self.nf:
-            cpd = lambda i: np.dot(dp.u, dp.u + cps[i].u)
+            cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf)
         if self.np:
-            cpd = lambda i: np.dot(dp.v, dp.v + cps[i].v)
+            cpd = lambda i: np.dot(dp.up, dp.up + cps[i].up)
             if self.nf:
-                cpd = lambda i: np.dot(dp.u, dp.u + cps[i].u) + np.dot(dp.v, dp.v + cps[i].v)
+                cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf) + np.dot(dp.up, dp.up + cps[i].up)
 
         return cps[0] if cpd(0) >= cpd(1) else cps[1]
 
@@ -131,19 +131,19 @@ class ArcLength(Constraint):
 
         else:
             if self.nf:
-                vec1 = np.append(sol[-2].u - p.u - cps[0].u, sol[-2].f - p.f - cps[0].f)
-                vec2 = np.append(sol[-2].u - p.u - cps[1].u, sol[-2].f - p.f - cps[1].f)
+                vec1 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
+                vec2 = np.append(sol[-2].uf - p.uf - cps[1].uf, sol[-2].ff - p.ff - cps[1].ff)
 
             if self.np:
-                vec1 = np.append(sol[-2].v - p.v - cps[0].v, sol[-2].p - p.p - cps[0].p)
-                vec2 = np.append(sol[-2].v - p.v - cps[1].v, sol[-2].p - p.p - cps[1].p)
+                vec1 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
+                vec2 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
 
                 if self.nf:
-                    vec11 = np.append(sol[-2].u - p.u - cps[0].u, sol[-2].f - p.f - cps[0].f)
-                    vec12 = np.append(sol[-2].v - p.v - cps[0].v, sol[-2].p - p.p - cps[0].p)
+                    vec11 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
+                    vec12 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
                     vec1 = np.append(vec11, vec12)
-                    vec21 = np.append(sol[-2].u - p.u - cps[1].u, sol[-2].f - p.f - cps[1].f)
-                    vec22 = np.append(sol[-2].v - p.v - cps[1].v, sol[-2].p - p.p - cps[1].p)
+                    vec21 = np.append(sol[-2].uf - p.uf - cps[1].uf, sol[-2].ff - p.ff - cps[1].ff)
+                    vec22 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
                     vec2 = np.append(vec21, vec22)
 
             return cps[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1]
@@ -176,12 +176,12 @@ class NewtonRaphsonByArcLength(ArcLength):
         a[2] -= dl**2
         if self.nf:
             a[0] += self.beta**2 * self.f2
-            a[1] += 2 * self.beta**2 * np.dot(dp.f, self.f)
-            a[2] += self.beta**2 * np.dot(dp.f, dp.f)
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.v)
-            a[2] += np.dot(dp.v, dp.v)
+            a[1] += 2 * np.dot(self.v, dp.up)
+            a[2] += np.dot(dp.up, dp.up)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
@@ -223,16 +223,16 @@ class GeneralizedArcLength(ArcLength):
         if self.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta**2 * self.f2
-            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.u + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.f, self.f)
-            a[2] += self.alpha * np.dot(dp.u + u[:, 0], dp.u + u[:, 0])
-            a[2] += self.beta**2 * np.dot(dp.f, dp.f)
+            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[2] += self.alpha * np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
+            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.v)
-            a[2] += np.dot(dp.v, dp.v)
+            a[1] += 2 * np.dot(self.v, dp.up)
+            a[2] += np.dot(dp.up, dp.up)
             tmpa = self.Kpp(p + dp) @ self.v
-            tmpc = dp.p - self.a.residual_prescribed(p + dp)
+            tmpc = dp.fp - self.a.residual_prescribed(p + dp)
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
                 tmpc -= self.Kpf(p + dp) @ u[:, 0]

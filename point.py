@@ -5,36 +5,36 @@ from copy import deepcopy
 State = np.ndarray | float
 
 class Point:
-    def __init__(self, u: State = 0.0, v: State = 0.0, f: State = 0.0, p: State = 0.0, y: float = 0.0) -> None:
-        self.u = u
-        self.v = v
-        self.f = f
-        self.p = p
+    def __init__(self, uf: State = 0.0, up: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:
+        self.uf = uf
+        self.up = up
+        self.ff = ff
+        self.fp = fp
         self.y = y
 
     def __iadd__(self, other: Point) -> Point:
-        self.u += other.u
-        self.v += other.v
-        self.f += other.f
-        self.p += other.p
+        self.uf += other.uf
+        self.up += other.up
+        self.ff += other.ff
+        self.fp += other.fp
         self.y += other.y
         return self
 
     def __rmul__(self, other: Point) -> Point:
         out = deepcopy(self)
-        out.u *= other
-        out.v *= other
-        out.f *= other
-        out.p *= other
+        out.uf *= other
+        out.up *= other
+        out.ff *= other
+        out.fp *= other
         out.y *= other
         return out
 
     def __add__(self, other: Point) -> Point:
-        out = deepcopy(Point(self.u, self.v, self.f, self.p, self.y))
+        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
         out += other
         return out
 
     def __sub__(self, other: Point) -> Point:
-        out = deepcopy(Point(self.u, self.v, self.f, self.p, self.y))
+        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
         out -= other
         return out

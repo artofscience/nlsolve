@@ -24,7 +24,7 @@ class Structure(ABC):
         return self.internal_load_free(p) + p.y * self.external_load()
 
     def residual_prescribed(self, p: Point) -> State:
-        return self.internal_load_prescribed(p) + p.p
+        return self.internal_load_prescribed(p) + p.fp
 
     def tangent_stiffness_free_free(self, p: Point) -> State:
         return None
