@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
+
 import numpy as np
+
 from point import Point
 
 State = np.ndarray[float] | float | None

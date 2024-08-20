@@ -1,9 +1,10 @@
+from typing import List
+
 import numpy as np
 
 from constraint import Constraint
 from point import Point
 from structure import Structure
-from typing import List
 
 
 class NewtonRaphson(Constraint):
@@ -59,26 +60,26 @@ class ArcLength(Constraint):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += np.dot(u, u) + self.beta**2 * self.ff2
+            a += np.dot(u, u) + self.beta ** 2 * self.ff2
         if self.np:
             tmpa = self.Kpp(p) @ self.up
             if self.nf:
                 tmpa += self.Kpf(p) @ u
-            a += self.beta**2 * np.dot(tmpa, tmpa) + self.up2
+            a += self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
     def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
-        a[2] -= dl**2
+        a[2] -= dl ** 2
         if self.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta**2 * self.ff2
+            a[0] += self.beta ** 2 * self.ff2
             a[1] += 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.ff)
             a[2] += np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
-            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
+            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.up2
             a[1] += 2 * np.dot(self.up, dp.up)
@@ -88,9 +89,9 @@ class ArcLength(Constraint):
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
                 tmpc -= self.Kpf(p + dp) @ u[:, 0]
-            a[0] += self.beta**2 * np.dot(tmpa, tmpa)
-            a[1] -= 2 * self.beta**2 * np.dot(tmpa, tmpc)
-            a[2] += self.beta**2 * np.dot(tmpc, tmpc)
+            a[0] += self.beta ** 2 * np.dot(tmpa, tmpa)
+            a[1] -= 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
+            a[2] += self.beta ** 2 * np.dot(tmpc, tmpc)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
@@ -107,7 +108,7 @@ class ArcLength(Constraint):
                 return [Point(uf=x[i], ff=y[i] * self.ff, y=y[i]) for i in range(2)]
             else:
                 ddp = [-self.rp(p + dp) - self.Kpf(p + dp) @ u[:, 0] - y[i] * (
-                            self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.up) for i in range(2)]
+                        self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.up) for i in range(2)]
                 return [Point(uf=x[i], up=y[i] * self.up, ff=y[i] * self.ff, fp=ddp[i], y=y[i]) for i in range(2)]
 
     def select_root_corrector(self, dp: Point, cps: List[Point]) -> Point:
@@ -164,7 +165,7 @@ class NewtonRaphsonByArcLength(ArcLength):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += self.beta**2 * self.ff2
+            a += self.beta ** 2 * self.ff2
         if self.np:
             a += self.up2
 
@@ -173,11 +174,11 @@ class NewtonRaphsonByArcLength(ArcLength):
     def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
-        a[2] -= dl**2
+        a[2] -= dl ** 2
         if self.nf:
-            a[0] += self.beta**2 * self.ff2
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
-            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
+            a[0] += self.beta ** 2 * self.ff2
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.ff)
+            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.up2
             a[1] += 2 * np.dot(self.up, dp.up)
@@ -207,26 +208,26 @@ class GeneralizedArcLength(ArcLength):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += self.alpha * np.dot(u, u) + self.beta**2 * self.ff2
+            a += self.alpha * np.dot(u, u) + self.beta ** 2 * self.ff2
         if self.np:
             tmpa = self.Kpp(p) @ self.up
             if self.nf:
                 tmpa += self.Kpf(p) @ u
-            a += self.alpha * self.beta**2 * np.dot(tmpa, tmpa) + self.up2
+            a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
     def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
-        a[2] -= dl**2
+        a[2] -= dl ** 2
         if self.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta**2 * self.ff2
+            a[0] += self.beta ** 2 * self.ff2
             a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.ff)
             a[2] += self.alpha * np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
-            a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
+            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if self.np:
             a[0] += self.up2
             a[1] += 2 * np.dot(self.up, dp.up)
@@ -236,9 +237,9 @@ class GeneralizedArcLength(ArcLength):
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
                 tmpc -= self.Kpf(p + dp) @ u[:, 0]
-            a[0] += self.alpha * self.beta**2 * np.dot(tmpa, tmpa)
-            a[1] -= self.alpha * 2 * self.beta**2 * np.dot(tmpa, tmpc)
-            a[2] += self.alpha * self.beta**2 * np.dot(tmpc, tmpc)
+            a[0] += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa)
+            a[1] -= self.alpha * 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
+            a[2] += self.alpha * self.beta ** 2 * np.dot(tmpc, tmpc)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")

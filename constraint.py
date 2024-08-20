@@ -1,9 +1,10 @@
 from abc import ABC
+from typing import List
 
 import numpy as np
-from structure import Structure
+
 from point import Point
-from typing import List
+from structure import Structure
 
 
 class Constraint(ABC):

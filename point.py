@@ -1,8 +1,11 @@
 from __future__ import annotations
-import numpy as np
+
 from copy import deepcopy
 
+import numpy as np
+
 State = np.ndarray | float
+
 
 class Point:
     def __init__(self, uf: State = 0.0, up: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:

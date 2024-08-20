@@ -1,19 +1,21 @@
-import numpy as np
 from math import pi, sin
+
+import numpy as np
+from matplotlib import pyplot as plt
+
 from constraints import NewtonRaphson, ArcLength, NewtonRaphsonByArcLength, GeneralizedArcLength
+from point import Point
 from solver import IncrementalSolver, IterativeSolver
 from structure import Structure
-from point import Point
-from matplotlib import pyplot as plt
 
 
 class InvolvedTrussProblem(Structure):
     w = 0.25
-    theta0 = pi/2.5
+    theta0 = pi / 2.5
 
     def internal_load(self, a1, a2):
         f1 = (1 / np.sqrt(1 - 2 * a1 * sin(self.theta0) + a1 ** 2) - 1) * (
-                    sin(self.theta0) - a1) - self.w * (a2 - a1)
+                sin(self.theta0) - a1) - self.w * (a2 - a1)
         return np.array([f1, self.w * (a2 - a1)])
 
     def tangent_stiffness(self, a1):
@@ -53,7 +55,7 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
         return np.array([[super().tangent_stiffness(p.uf[0])[0, 0]]])
 
     def tangent_stiffness_prescribed_prescribed(self, p):
-        a=  np.array([super().tangent_stiffness(p.uf[0])[1, 1]])
+        a = np.array([super().tangent_stiffness(p.uf[0])[1, 1]])
         return a
 
     def tangent_stiffness_free_prescribed(self, p):
@@ -107,7 +109,6 @@ if __name__ == "__main__":
     for a in tries2:
         plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
         plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-
 
     b = [-i.ff[1] for i in solution2]
     a = [i.uf[1] for i in solution2]
@@ -234,7 +235,6 @@ if __name__ == "__main__":
     b = [-i.fp for i in solution4]
     plt.plot(a, b, 'ko', alpha=0.5)
     plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
-
 
     plt.gca().axis('equal')
     plt.show()

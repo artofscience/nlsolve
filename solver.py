@@ -1,7 +1,10 @@
+from typing import List, Tuple
+
 import numpy as np
+
 from constraint import Constraint
 from point import Point
-from typing import List, Tuple
+
 
 class IterativeSolver:
     def __init__(self, constraint: Constraint) -> None:
@@ -89,5 +92,3 @@ class IncrementalSolver:
         print("Total number of iterates: %d" % iterative_counter)
 
         return equilibrium_solutions, tries_storage
-
-
