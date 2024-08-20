@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
@@ -21,8 +21,10 @@ class Constraint(ABC):
         self.Kfp = self.a.tangent_stiffness_free_prescribed
         self.rp = self.a.residual_prescribed
 
+    @abstractmethod
     def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
-        ...
+        pass
 
+    @abstractmethod
     def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> Point:
-        ...
+        pass
