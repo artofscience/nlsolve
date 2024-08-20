@@ -9,12 +9,12 @@ from typing import List
 class Constraint(ABC):
     def __init__(self, nonlinear_function: Structure) -> None:
         self.a = nonlinear_function
-        self.f = self.a.external_load()
-        self.v = self.a.prescribed_motion()
-        self.f2 = np.dot(self.f, self.f) if self.f is not None else None
-        self.v2 = np.dot(self.v, self.v) if self.v is not None else None
-        self.nf = np.shape(self.f)[0] if self.f is not None else None
-        self.np = np.shape(self.v)[0] if self.v is not None else None
+        self.ff = self.a.external_load()
+        self.up = self.a.prescribed_motion()
+        self.ff2 = np.dot(self.ff, self.ff) if self.ff is not None else None
+        self.up2 = np.dot(self.up, self.up) if self.up is not None else None
+        self.nf = np.shape(self.ff)[0] if self.ff is not None else None
+        self.np = np.shape(self.up)[0] if self.up is not None else None
         self.Kpp = self.a.tangent_stiffness_prescribed_prescribed
         self.Kpf = self.a.tangent_stiffness_prescribed_free
         self.Kfp = self.a.tangent_stiffness_free_prescribed

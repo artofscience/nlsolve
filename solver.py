@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 from constraint import Constraint
 from point import Point
@@ -9,8 +7,8 @@ class IterativeSolver:
     def __init__(self, constraint: Constraint) -> None:
         self.constraint = constraint
         self.nonlinear_function = self.constraint.a
-        self.f = self.constraint.f
-        self.v = self.constraint.v
+        self.ff = self.constraint.ff
+        self.up = self.constraint.up
         self.nf = self.constraint.nf
         self.np = self.constraint.np
         self.Kfp = self.nonlinear_function.tangent_stiffness_free_prescribed
@@ -26,8 +24,8 @@ class IterativeSolver:
         ddx = np.zeros((self.nf, 2), dtype=float) if self.nf else None
 
         if self.nf:
-            load = 1.0 * self.f
-            load += self.Kfp(p) @ self.v if self.np else 0.0
+            load = 1.0 * self.ff
+            load += self.Kfp(p) @ self.up if self.np else 0.0
             ddx[:, 1] = np.linalg.solve(self.Kff(p), -load)
 
         dp += self.constraint.predictor(p, dp, ddx, dl, sol)
@@ -46,8 +44,8 @@ class IterativeSolver:
             iterative_counter += 1
 
             if self.nf:
-                load = 1.0 * self.f
-                load += self.Kfp(p + dp) @ self.v if self.np else 0.0
+                load = 1.0 * self.ff
+                load += self.Kfp(p + dp) @ self.up if self.np else 0.0
                 ddx[:, :] = np.linalg.solve(self.Kff(p + dp), -np.array([rf, load]).T)
 
             dp += self.constraint.corrector(p, dp, ddx, dl)

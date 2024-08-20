@@ -11,8 +11,8 @@ class NewtonRaphson(Constraint):
     def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
 
         load = 0.0
-        load += self.v2 if self.np else 0.0
-        load += self.f2 if self.nf else 0.0
+        load += self.up2 if self.np else 0.0
+        load += self.ff2 if self.nf else 0.0
 
         ddy = dl / np.sqrt(load)
 
@@ -20,9 +20,9 @@ class NewtonRaphson(Constraint):
 
         if self.nf:
             point.uf += ddy * ddx[:, 1]
-            point.ff += ddy * self.f
+            point.ff += ddy * self.ff
         if self.np:
-            point.up = ddy * self.v
+            point.up = ddy * self.up
             point.fp = -self.Kpp(p) @ point.up
             point.fp -= ddy * self.Kpf(p) @ ddx[:, 1] if self.nf else 0.0
 
@@ -59,12 +59,12 @@ class ArcLength(Constraint):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += np.dot(u, u) + self.beta**2 * self.f2
+            a += np.dot(u, u) + self.beta**2 * self.ff2
         if self.np:
-            tmpa = self.Kpp(p) @ self.v
+            tmpa = self.Kpp(p) @ self.up
             if self.nf:
                 tmpa += self.Kpf(p) @ u
-            a += self.beta**2 * np.dot(tmpa, tmpa) + self.v2
+            a += self.beta**2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
@@ -74,16 +74,16 @@ class ArcLength(Constraint):
         a[2] -= dl**2
         if self.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta**2 * self.f2
+            a[0] += self.beta**2 * self.ff2
             a[1] += 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
             a[2] += np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
             a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
-            a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.up)
+            a[0] += self.up2
+            a[1] += 2 * np.dot(self.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.Kpp(p + dp) @ self.v
+            tmpa = self.Kpp(p + dp) @ self.up
             tmpc = dp.fp - self.a.residual_prescribed(p + dp)
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
@@ -99,16 +99,16 @@ class ArcLength(Constraint):
 
     def get_point(self, p: Point, dp: Point, u: np.ndarray, y: np.ndarray) -> List[Point]:
         if self.np is not None and self.nf is None:
-            ddp = [-self.rp(p + dp) - y[i] * self.Kpp(p + dp) @ self.v for i in range(2)]
-            return [Point(up=y[i] * self.v, fp=ddp[i], y=y[i]) for i in range(2)]
+            ddp = [-self.rp(p + dp) - y[i] * self.Kpp(p + dp) @ self.up for i in range(2)]
+            return [Point(up=y[i] * self.up, fp=ddp[i], y=y[i]) for i in range(2)]
         if self.nf is not None:
             x = [u[:, 0] + i * u[:, 1] for i in y]
             if self.np is None:
-                return [Point(uf=x[i], ff=y[i] * self.f, y=y[i]) for i in range(2)]
+                return [Point(uf=x[i], ff=y[i] * self.ff, y=y[i]) for i in range(2)]
             else:
                 ddp = [-self.rp(p + dp) - self.Kpf(p + dp) @ u[:, 0] - y[i] * (
-                            self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.v) for i in range(2)]
-                return [Point(uf=x[i], up=y[i] * self.v, ff=y[i] * self.f, fp=ddp[i], y=y[i]) for i in range(2)]
+                            self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.up) for i in range(2)]
+                return [Point(uf=x[i], up=y[i] * self.up, ff=y[i] * self.ff, fp=ddp[i], y=y[i]) for i in range(2)]
 
     def select_root_corrector(self, dp: Point, cps: List[Point]) -> Point:
         """
@@ -164,9 +164,9 @@ class NewtonRaphsonByArcLength(ArcLength):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += self.beta**2 * self.f2
+            a += self.beta**2 * self.ff2
         if self.np:
-            a += self.v2
+            a += self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
@@ -175,12 +175,12 @@ class NewtonRaphsonByArcLength(ArcLength):
 
         a[2] -= dl**2
         if self.nf:
-            a[0] += self.beta**2 * self.f2
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[0] += self.beta**2 * self.ff2
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
             a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
-            a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.up)
+            a[0] += self.up2
+            a[1] += 2 * np.dot(self.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -207,12 +207,12 @@ class GeneralizedArcLength(ArcLength):
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += self.alpha * np.dot(u, u) + self.beta**2 * self.f2
+            a += self.alpha * np.dot(u, u) + self.beta**2 * self.ff2
         if self.np:
-            tmpa = self.Kpp(p) @ self.v
+            tmpa = self.Kpp(p) @ self.up
             if self.nf:
                 tmpa += self.Kpf(p) @ u
-            a += self.alpha * self.beta**2 * np.dot(tmpa, tmpa) + self.v2
+            a += self.alpha * self.beta**2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
@@ -222,16 +222,16 @@ class GeneralizedArcLength(ArcLength):
         a[2] -= dl**2
         if self.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta**2 * self.f2
+            a[0] += self.beta**2 * self.ff2
             a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.f)
+            a[1] += 2 * self.beta**2 * np.dot(dp.ff, self.ff)
             a[2] += self.alpha * np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
             a[2] += self.beta**2 * np.dot(dp.ff, dp.ff)
         if self.np:
-            a[0] += self.v2
-            a[1] += 2 * np.dot(self.v, dp.up)
+            a[0] += self.up2
+            a[1] += 2 * np.dot(self.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.Kpp(p + dp) @ self.v
+            tmpa = self.Kpp(p + dp) @ self.up
             tmpc = dp.fp - self.a.residual_prescribed(p + dp)
             if self.nf:
                 tmpa += self.Kpf(p + dp) @ u[:, 1]
