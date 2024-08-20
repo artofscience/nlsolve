@@ -31,10 +31,8 @@ class NewtonRaphson(Constraint):
     def predictor(self, p, dp, ddx, dl, sol):
 
         load = 0.0
-        if self.np:
-            load += self.v2
-        if self.nf:
-            load += self.f2
+        load += self.v2 if self.np else 0.0
+        load += self.f2 if self.nf else 0.0
 
         ddy = dl / np.sqrt(load)
 
@@ -46,8 +44,7 @@ class NewtonRaphson(Constraint):
         if self.np:
             point.v = ddy * self.v
             point.p = -self.Kpp(p) @ point.v
-            if self.nf:
-                point.p -= ddy * self.Kpf(p) @ ddx[:, 1]
+            point.p -= ddy * self.Kpf(p) @ ddx[:, 1] if self.nf else 0.0
 
         return point
 
@@ -59,8 +56,7 @@ class NewtonRaphson(Constraint):
             point.u += ddx[:, 0]
         if self.np:
             point.p = -self.rp(p + dp)
-            if self.nf:
-                point.p -= self.Kpf(p + dp) @ ddx[:, 0]
+            point.p -= self.Kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
 
         return point
 

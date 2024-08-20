@@ -53,8 +53,7 @@ class IterativeSolver:
 
         if self.nf:
             load = 1.0 * self.f
-            if self.np:
-                load += self.Kfp(p) @ self.v
+            load += self.Kfp(p) @ self.v if self.np else 0.0
             ddx[:, 1] = np.linalg.solve(self.Kff(p), -load)
 
         dp += self.constraint.predictor(p, dp, ddx, dl, sol)
@@ -74,8 +73,7 @@ class IterativeSolver:
 
             if self.nf:
                 load = 1.0 * self.f
-                if self.np:
-                    load += self.Kfp(p + dp) @ self.v
+                load += self.Kfp(p + dp) @ self.v if self.np else 0.0
                 ddx[:, :] = np.linalg.solve(self.Kff(p + dp), -np.array([rf, load]).T)
 
             dp += self.constraint.corrector(p, dp, ddx, dl)
