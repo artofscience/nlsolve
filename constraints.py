@@ -24,8 +24,8 @@ class NewtonRaphson(Constraint):
             point.ff += ddy * self.ff
         if self.np:
             point.up = ddy * self.up
-            point.fp = -self.Kpp(p) @ point.up
-            point.fp -= ddy * self.Kpf(p) @ ddx[:, 1] if self.nf else 0.0
+            point.fp = -self.kpp(p) @ point.up
+            point.fp -= ddy * self.kpf(p) @ ddx[:, 1] if self.nf else 0.0
 
         return point
 
@@ -37,7 +37,7 @@ class NewtonRaphson(Constraint):
             point.uf += ddx[:, 0]
         if self.np:
             point.fp = -self.rp(p + dp)
-            point.fp -= self.Kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
+            point.fp -= self.kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
 
         return point
 
@@ -62,9 +62,9 @@ class ArcLength(Constraint):
         if self.nf:
             a += np.dot(u, u) + self.beta ** 2 * self.ff2
         if self.np:
-            tmpa = self.Kpp(p) @ self.up
+            tmpa = self.kpp(p) @ self.up
             if self.nf:
-                tmpa += self.Kpf(p) @ u
+                tmpa += self.kpf(p) @ u
             a += self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
@@ -84,11 +84,11 @@ class ArcLength(Constraint):
             a[0] += self.up2
             a[1] += 2 * np.dot(self.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.Kpp(p + dp) @ self.up
-            tmpc = dp.fp - self.a.residual_prescribed(p + dp)
+            tmpa = self.kpp(p + dp) @ self.up
+            tmpc = dp.fp - self.nlf.residual_prescribed(p + dp)
             if self.nf:
-                tmpa += self.Kpf(p + dp) @ u[:, 1]
-                tmpc -= self.Kpf(p + dp) @ u[:, 0]
+                tmpa += self.kpf(p + dp) @ u[:, 1]
+                tmpc -= self.kpf(p + dp) @ u[:, 0]
             a[0] += self.beta ** 2 * np.dot(tmpa, tmpa)
             a[1] -= 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.beta ** 2 * np.dot(tmpc, tmpc)
@@ -100,15 +100,15 @@ class ArcLength(Constraint):
 
     def get_point(self, p: Point, dp: Point, u: np.ndarray, y: np.ndarray) -> List[Point]:
         if self.np is not None and self.nf is None:
-            ddp = [-self.rp(p + dp) - y[i] * self.Kpp(p + dp) @ self.up for i in range(2)]
+            ddp = [-self.rp(p + dp) - y[i] * self.kpp(p + dp) @ self.up for i in range(2)]
             return [Point(up=y[i] * self.up, fp=ddp[i], y=y[i]) for i in range(2)]
         if self.nf is not None:
             x = [u[:, 0] + i * u[:, 1] for i in y]
             if self.np is None:
                 return [Point(uf=x[i], ff=y[i] * self.ff, y=y[i]) for i in range(2)]
             else:
-                ddp = [-self.rp(p + dp) - self.Kpf(p + dp) @ u[:, 0] - y[i] * (
-                        self.Kpf(p + dp) @ u[:, 1] + self.Kpp(p + dp) @ self.up) for i in range(2)]
+                ddp = [-self.rp(p + dp) - self.kpf(p + dp) @ u[:, 0] - y[i] * (
+                        self.kpf(p + dp) @ u[:, 1] + self.kpp(p + dp) @ self.up) for i in range(2)]
                 return [Point(uf=x[i], up=y[i] * self.up, ff=y[i] * self.ff, fp=ddp[i], y=y[i]) for i in range(2)]
 
     def select_root_corrector(self, dp: Point, cps: List[Point]) -> Point:
@@ -210,9 +210,9 @@ class GeneralizedArcLength(ArcLength):
         if self.nf:
             a += self.alpha * np.dot(u, u) + self.beta ** 2 * self.ff2
         if self.np:
-            tmpa = self.Kpp(p) @ self.up
+            tmpa = self.kpp(p) @ self.up
             if self.nf:
-                tmpa += self.Kpf(p) @ u
+                tmpa += self.kpf(p) @ u
             a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
@@ -232,11 +232,11 @@ class GeneralizedArcLength(ArcLength):
             a[0] += self.up2
             a[1] += 2 * np.dot(self.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.Kpp(p + dp) @ self.up
-            tmpc = dp.fp - self.a.residual_prescribed(p + dp)
+            tmpa = self.kpp(p + dp) @ self.up
+            tmpc = dp.fp - self.nlf.residual_prescribed(p + dp)
             if self.nf:
-                tmpa += self.Kpf(p + dp) @ u[:, 1]
-                tmpc -= self.Kpf(p + dp) @ u[:, 0]
+                tmpa += self.kpf(p + dp) @ u[:, 1]
+                tmpc -= self.kpf(p + dp) @ u[:, 0]
             a[0] += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa)
             a[1] -= self.alpha * 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.alpha * self.beta ** 2 * np.dot(tmpc, tmpc)

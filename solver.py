@@ -9,15 +9,15 @@ from point import Point
 class IterativeSolver:
     def __init__(self, constraint: Constraint) -> None:
         self.constraint = constraint
-        self.nonlinear_function = self.constraint.a
+        self.nlf = self.constraint.nlf
         self.ff = self.constraint.ff
         self.up = self.constraint.up
         self.nf = self.constraint.nf
         self.np = self.constraint.np
-        self.Kfp = self.nonlinear_function.tangent_stiffness_free_prescribed
-        self.Kff = self.nonlinear_function.tangent_stiffness_free_free
-        self.rf = self.nonlinear_function.residual_free
-        self.rp = self.nonlinear_function.residual_prescribed
+        self.kfp = self.nlf.tangent_stiffness_free_prescribed
+        self.kff = self.nlf.tangent_stiffness_free_free
+        self.rf = self.nlf.residual_free
+        self.rp = self.nlf.residual_prescribed
 
     def __call__(self, sol: List[Point], dl: float = 1.0) -> Tuple[Point, int, List[Point]]:
 
@@ -28,8 +28,8 @@ class IterativeSolver:
 
         if self.nf:
             load = 1.0 * self.ff
-            load += self.Kfp(p) @ self.up if self.np else 0.0
-            ddx[:, 1] = np.linalg.solve(self.Kff(p), -load)
+            load += self.kfp(p) @ self.up if self.np else 0.0
+            ddx[:, 1] = np.linalg.solve(self.kff(p), -load)
 
         dp += self.constraint.predictor(p, dp, ddx, dl, sol)
 
@@ -48,8 +48,8 @@ class IterativeSolver:
 
             if self.nf:
                 load = 1.0 * self.ff
-                load += self.Kfp(p + dp) @ self.up if self.np else 0.0
-                ddx[:, :] = np.linalg.solve(self.Kff(p + dp), -np.array([rf, load]).T)
+                load += self.kfp(p + dp) @ self.up if self.np else 0.0
+                ddx[:, :] = np.linalg.solve(self.kff(p + dp), -np.array([rf, load]).T)
 
             dp += self.constraint.corrector(p, dp, ddx, dl)
 
