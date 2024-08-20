@@ -1,12 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-from abc import ABC
-from constraints import Constraint
+from constraint import Constraint
 from point import Point
 from typing import List, Tuple
-
-State = np.ndarray[float] | float | None
 
 class IterativeSolver:
     def __init__(self, constraint: Constraint) -> None:
@@ -94,37 +91,5 @@ class IncrementalSolver:
         print("Total number of iterates: %d" % iterative_counter)
 
         return equilibrium_solutions, tries_storage
-
-
-class Structure(ABC):
-    def external_load(self) -> State:
-        return None
-
-    def prescribed_motion(self) -> State:
-        return None
-
-    def internal_load_free(self, p: Point) -> State:
-        return None
-
-    def internal_load_prescribed(self, p: Point) -> State:
-        return None
-
-    def residual_free(self, p: Point) -> State:
-        return self.internal_load_free(p) + p.y * self.external_load()
-
-    def residual_prescribed(self, p: Point) -> State:
-        return self.internal_load_prescribed(p) + p.p
-
-    def tangent_stiffness_free_free(self, p: Point) -> State:
-        return None
-
-    def tangent_stiffness_free_prescribed(self, p: Point) -> State:
-        return None
-
-    def tangent_stiffness_prescribed_free(self, p: Point) -> State:
-        return None
-
-    def tangent_stiffness_prescribed_prescribed(self, p: Point) -> State:
-        return None
 
 

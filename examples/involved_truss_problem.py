@@ -1,7 +1,9 @@
 import numpy as np
 from math import pi, sin
 from constraints import NewtonRaphson, ArcLength, NewtonRaphsonByArcLength, GeneralizedArcLength
-from solver import IncrementalSolver, IterativeSolver, Structure, Point
+from solver import IncrementalSolver, IterativeSolver
+from structure import Structure
+from point import Point
 from matplotlib import pyplot as plt
 
 

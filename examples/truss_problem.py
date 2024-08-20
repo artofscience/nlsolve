@@ -1,9 +1,10 @@
 import numpy as np
 from math import pi, sin
 from constraints import NewtonRaphson, ArcLength
-from solver import IncrementalSolver, IterativeSolver, Structure
+from solver import IncrementalSolver, IterativeSolver
+from structure import Structure
 from matplotlib import pyplot as plt
-from solver import Point
+from point import Point
 
 
 class TrussProblem(Structure):
