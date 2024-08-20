@@ -1,38 +1,15 @@
+from __future__ import annotations
+
 import numpy as np
-from copy import deepcopy
 from abc import ABC
+from constraints import Constraint
+from point import Point
+from typing import List, Tuple
 
-
-class IncrementalSolver:
-    def __init__(self, solution_method, dl=0.1):
-        self.dl = dl
-        self.solution_method = solution_method
-
-    def __call__(self, p):
-        equilibrium_solutions = [p]
-
-        incremental_counter = 0
-        iterative_counter = 0
-        tries_storage = []
-
-        while p.y <= 1.0:
-            incremental_counter += 1
-
-            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.dl)
-            iterative_counter += iterates
-            tries_storage.append(tries)
-
-            p = p + dp
-            equilibrium_solutions.append(p)
-
-        print("Number of increments: %d" % incremental_counter)
-        print("Total number of iterates: %d" % iterative_counter)
-
-        return equilibrium_solutions, tries_storage
-
+State = np.ndarray[float] | float | None
 
 class IterativeSolver:
-    def __init__(self, constraint):
+    def __init__(self, constraint: Constraint) -> None:
         self.constraint = constraint
         self.nonlinear_function = self.constraint.a
         self.f = self.constraint.f
@@ -44,7 +21,7 @@ class IterativeSolver:
         self.rf = self.nonlinear_function.residual_free
         self.rp = self.nonlinear_function.residual_prescribed
 
-    def __call__(self, sol, dl=1.0):
+    def __call__(self, sol: List[Point], dl: float = 1.0) -> Tuple[Point, int, List[Point]]:
 
         p = sol[-1]
 
@@ -91,69 +68,63 @@ class IterativeSolver:
         return dp, iterative_counter, tries
 
 
+class IncrementalSolver:
+    def __init__(self, solution_method: IterativeSolver, dl: float = 0.1) -> None:
+        self.dl = dl
+        self.solution_method = solution_method
+
+    def __call__(self, p: Point) -> Tuple[List[Point], List[List[Point]]]:
+        equilibrium_solutions = [p]
+
+        incremental_counter = 0
+        iterative_counter = 0
+        tries_storage = []
+
+        while p.y <= 1.0:
+            incremental_counter += 1
+
+            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.dl)
+            iterative_counter += iterates
+            tries_storage.append(tries)
+
+            p = p + dp
+            equilibrium_solutions.append(p)
+
+        print("Number of increments: %d" % incremental_counter)
+        print("Total number of iterates: %d" % iterative_counter)
+
+        return equilibrium_solutions, tries_storage
+
+
 class Structure(ABC):
-    def external_load(self):
+    def external_load(self) -> State:
         return None
 
-    def prescribed_motion(self):
+    def prescribed_motion(self) -> State:
         return None
 
-    def internal_load_free(self, p):
+    def internal_load_free(self, p: Point) -> State:
         return None
 
-    def internal_load_prescribed(self, p):
+    def internal_load_prescribed(self, p: Point) -> State:
         return None
 
-    def residual_free(self, p):
+    def residual_free(self, p: Point) -> State:
         return self.internal_load_free(p) + p.y * self.external_load()
 
-    def residual_prescribed(self, p):
+    def residual_prescribed(self, p: Point) -> State:
         return self.internal_load_prescribed(p) + p.p
 
-    def tangent_stiffness_free_free(self, p):
+    def tangent_stiffness_free_free(self, p: Point) -> State:
         return None
 
-    def tangent_stiffness_free_prescribed(self, p):
+    def tangent_stiffness_free_prescribed(self, p: Point) -> State:
         return None
 
-    def tangent_stiffness_prescribed_free(self, p):
+    def tangent_stiffness_prescribed_free(self, p: Point) -> State:
         return None
 
-    def tangent_stiffness_prescribed_prescribed(self, p):
+    def tangent_stiffness_prescribed_prescribed(self, p: Point) -> State:
         return None
 
 
-class Point:
-    def __init__(self, u=0, v=0, f=0, p=0, y=0.0):
-        self.u = u
-        self.v = v
-        self.f = f
-        self.p = p
-        self.y = y
-
-    def __iadd__(self, other):
-        self.u += other.u
-        self.v += other.v
-        self.f += other.f
-        self.p += other.p
-        self.y += other.y
-        return self
-
-    def __rmul__(self, other):
-        out = deepcopy(self)
-        out.u *= other
-        out.v *= other
-        out.f *= other
-        out.p *= other
-        out.y *= other
-        return out
-
-    def __add__(self, other):
-        out = deepcopy(Point(self.u, self.v, self.f, self.p, self.y))
-        out += other
-        return out
-
-    def __sub__(self, other):
-        out = deepcopy(Point(self.u, self.v, self.f, self.p, self.y))
-        out -= other
-        return out
