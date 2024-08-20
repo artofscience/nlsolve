@@ -13,6 +13,7 @@ class Structure(ABC):
     """
     Interface of a nonlinear function to the nonlinear solver.
 
+    The external / internal / residual load, motion and stiffness matrix are partitioned based on the free and prescribed degrees of freedom.
     Both the free and prescribed degrees of freedom can be of dimension 0, 1 or higher.
     If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
