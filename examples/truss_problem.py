@@ -23,25 +23,25 @@ class TrussProblem(Structure):
 
 class TrussProblemLoadBased(TrussProblem):
 
-    def external_load(self):
+    def ff(self):
         return np.array([-2.0], dtype=float)
 
     def internal_load_free(self, p):
         return super().internal_load(p.uf)
 
-    def tangent_stiffness_free_free(self, p):
+    def kff(self, p):
         return super().tangent_stiffness(p.uf)
 
 
 class TrussProblemMotionBased(TrussProblem):
 
-    def prescribed_motion(self):
+    def up(self):
         return np.array([3.0], dtype=float)
 
     def internal_load_prescribed(self, p):
         return super().internal_load(p.up)
 
-    def tangent_stiffness_prescribed_prescribed(self, p):
+    def kpp(self, p):
         return super().tangent_stiffness(p.up)
 
 

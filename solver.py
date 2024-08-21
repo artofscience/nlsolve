@@ -17,38 +17,28 @@ class IterativeSolver:
         # create some aliases for commonly used functions
         self.constraint = constraint
         self.nlf = self.constraint.nlf
-        self.ff = self.constraint.ff
-        self.up = self.constraint.up
-        self.nf = self.constraint.nf
-        self.np = self.constraint.np
-        self.kfp = self.nlf.tangent_stiffness_free_prescribed
-        self.kff = self.nlf.tangent_stiffness_free_free
-        self.kpf = self.nlf.tangent_stiffness_prescribed_free
-        self.kpp = self.nlf.tangent_stiffness_prescribed_prescribed
-        self.rf = self.nlf.residual_free
-        self.rp = self.nlf.residual_prescribed
 
     def __call__(self, sol: List[Point], dl: float = 1.0) -> Tuple[Point, int, List[Point]]:
 
         p = sol[-1]
 
         dp = 0.0 * p
-        ddx = np.zeros((self.nf, 2), dtype=float) if self.nf else None
+        ddx = np.zeros((self.nlf.nf, 2), dtype=float) if self.nlf.nf else None
 
-        if self.nf:
-            load = 1.0 * self.ff
-            load += self.kfp(p) @ self.up if self.np else 0.0
-            ddx[:, 1] = np.linalg.solve(self.kff(p), -load)
+        if self.nlf.nf:
+            load = 1.0 * self.nlf.ff
+            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0
+            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
 
         y = self.constraint.predictor(p, sol, ddx, dl)
-        dp += self.get_point(p, ddx, y)
+        dp += self.nlf.get_point(p, ddx, y)
 
         r = np.array([])
-        if self.nf:
-            rf = self.rf(p + dp)
+        if self.nlf.nf:
+            rf = self.nlf.rf(p + dp)
             r = np.append(r, rf)
-        if self.np:
-            r = np.append(r, self.rp(p + dp))
+        if self.nlf.np:
+            r = np.append(r, self.nlf.rp(p + dp))
 
         tries = [p]
 
@@ -56,46 +46,25 @@ class IterativeSolver:
         while np.any(np.abs(r) > 1e-6):
             iterative_counter += 1
 
-            if self.nf:
-                load = 1.0 * self.ff
-                load += self.kfp(p + dp) @ self.up if self.np else 0.0
-                ddx[:, :] = np.linalg.solve(self.kff(p + dp), -np.array([rf, load]).T)
+            if self.nlf.nf:
+                load = 1.0 * self.nlf.ff
+                load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
+                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([rf, load]).T)
 
             y = self.constraint.corrector(p, dp, ddx, dl)
-            dp += self.get_point(p + dp, ddx, y)
+            dp += self.nlf.get_point(p + dp, ddx, y)
 
             tries.append(p + dp)
 
             r = np.array([])
-            if self.nf:
-                rf = self.rf(p + dp)
+            if self.nlf.nf:
+                rf = self.nlf.rf(p + dp)
                 r = np.append(r, rf)
-            if self.np:
-                r = np.append(r, self.rp(p + dp))
+            if self.nlf.np:
+                r = np.append(r, self.nlf.rp(p + dp))
 
         # print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
-
-    def get_point(self, p: Point, u: np.ndarray, y: float) -> Point:
-        """
-        Provides the iterative updated state given some iterative load parameter.
-
-        :param p: current state (p + dp)
-        :param u: resultants from solve
-        :param y: iterative load parameter
-        :return:
-        """
-        dduf, ddup, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
-
-        if self.nf:
-            dduf = u[:, 0] + y * u[:, 1]
-            ddff = y * self.ff
-        if self.np:
-            ddup = y * self.up
-            ddfp = -self.rp(p) - y * self.kpp(p) @ self.up
-            ddfp -= self.kpf(p) @ dduf if self.nf else 0.0
-
-        return Point(dduf, ddup, ddff, ddfp, y)
 
 
 class IncrementalSolver:

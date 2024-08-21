@@ -17,20 +17,6 @@ class Constraint(ABC):
 
         # some aliases for commonly used functions
         self.nlf = nonlinear_function
-        self.ff = self.nlf.external_load()
-        self.up = self.nlf.prescribed_motion()
-        self.kpp = self.nlf.tangent_stiffness_prescribed_prescribed
-        self.kpf = self.nlf.tangent_stiffness_prescribed_free
-        self.kfp = self.nlf.tangent_stiffness_free_prescribed
-        self.rp = self.nlf.residual_prescribed
-
-        # get dimension of free and prescribed degrees of freedom
-        self.nf = np.shape(self.ff)[0] if self.ff is not None else None
-        self.np = np.shape(self.up)[0] if self.up is not None else None
-
-        # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ff, self.ff) if self.nf is not None else None
-        self.up2 = np.dot(self.up, self.up) if self.np is not None else None
 
     @abstractmethod
     def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> float:
@@ -57,26 +43,5 @@ class Constraint(ABC):
         :return: updated iterative state
         """
         pass
-
-    def get_point(self, p: Point, u: np.ndarray, y: float) -> Point:
-        """
-        Provides the iterative updated state given some iterative load parameter.
-
-        :param p: current state (p + dp)
-        :param u: resultants from solve
-        :param y: iterative load parameter
-        :return:
-        """
-        dduf, ddup, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
-
-        if self.nf:
-            dduf = u[:, 0] + y * u[:, 1]
-            ddff = y * self.ff
-        if self.np:
-            ddup = y * self.up
-            ddfp = -self.rp(p) - y * self.kpp(p) @ self.up
-            ddfp -= self.kpf(p) @ dduf if self.nf else 0.0
-
-        return Point(dduf, ddup, ddff, ddfp, y)
 
 
