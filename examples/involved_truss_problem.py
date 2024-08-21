@@ -3,10 +3,8 @@ from math import pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import NewtonRaphson, ArcLength, NewtonRaphsonByArcLength, GeneralizedArcLength
-from point import Point
+from constraints import NewtonRaphson, ArcLength, NewtonRaphsonByArcLength, GeneralizedArcLength, Structure, Point
 from solver import IncrementalSolver, IterativeSolver
-from structure import Structure
 
 
 class InvolvedTrussProblem(Structure):

@@ -2,8 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from constraint import Constraint
-from point import Point
+from constraints import Constraint, Point
 
 
 class IterativeSolver:
