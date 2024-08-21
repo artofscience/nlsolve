@@ -8,6 +8,13 @@ from point import Point
 
 class IterativeSolver:
     def __init__(self, constraint: Constraint) -> None:
+        """
+        Initialization of the iterative solver.
+
+        :param constraint: constraint function used to solve the system of nonlinear equations
+        """
+
+        # create some aliases for commonly used functions
         self.constraint = constraint
         self.nlf = self.constraint.nlf
         self.ff = self.constraint.ff
@@ -16,6 +23,8 @@ class IterativeSolver:
         self.np = self.constraint.np
         self.kfp = self.nlf.tangent_stiffness_free_prescribed
         self.kff = self.nlf.tangent_stiffness_free_free
+        self.kpf = self.nlf.tangent_stiffness_prescribed_free
+        self.kpp = self.nlf.tangent_stiffness_prescribed_prescribed
         self.rf = self.nlf.residual_free
         self.rp = self.nlf.residual_prescribed
 
@@ -31,7 +40,8 @@ class IterativeSolver:
             load += self.kfp(p) @ self.up if self.np else 0.0
             ddx[:, 1] = np.linalg.solve(self.kff(p), -load)
 
-        dp += self.constraint.predictor(p, dp, ddx, dl, sol)
+        y = self.constraint.predictor(p, sol, ddx, dl)
+        dp += self.get_point(p, ddx, y)
 
         r = np.array([])
         if self.nf:
@@ -51,7 +61,8 @@ class IterativeSolver:
                 load += self.kfp(p + dp) @ self.up if self.np else 0.0
                 ddx[:, :] = np.linalg.solve(self.kff(p + dp), -np.array([rf, load]).T)
 
-            dp += self.constraint.corrector(p, dp, ddx, dl)
+            y = self.constraint.corrector(p, dp, ddx, dl)
+            dp += self.get_point(p + dp, ddx, y)
 
             tries.append(p + dp)
 
@@ -64,6 +75,27 @@ class IterativeSolver:
 
         # print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
+
+    def get_point(self, p: Point, u: np.ndarray, y: float) -> Point:
+        """
+        Provides the iterative updated state given some iterative load parameter.
+
+        :param p: current state (p + dp)
+        :param u: resultants from solve
+        :param y: iterative load parameter
+        :return:
+        """
+        dduf, ddup, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
+
+        if self.nf:
+            dduf = u[:, 0] + y * u[:, 1]
+            ddff = y * self.ff
+        if self.np:
+            ddup = y * self.up
+            ddfp = -self.rp(p) - y * self.kpp(p) @ self.up
+            ddfp -= self.kpf(p) @ dduf if self.nf else 0.0
+
+        return Point(dduf, ddup, ddff, ddfp, y)
 
 
 class IncrementalSolver:

@@ -9,37 +9,16 @@ from structure import Structure
 
 class NewtonRaphson(Constraint):
 
-    def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
+    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> float:
+        return 0.0
+
+    def predictor(self, p: Point,  sol: List[Point], ddx: np.ndarray, dl: float) -> Point:
 
         load = 0.0
         load += self.up2 if self.np else 0.0
         load += self.ff2 if self.nf else 0.0
 
-        ddy = dl / np.sqrt(load)
-
-        point = Point(y=ddy)
-
-        if self.nf:
-            point.uf += ddy * ddx[:, 1]
-            point.ff += ddy * self.ff
-        if self.np:
-            point.up = ddy * self.up
-            point.fp = -self.kpp(p) @ point.up
-            point.fp -= ddy * self.kpf(p) @ ddx[:, 1] if self.nf else 0.0
-
-        return point
-
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> Point:
-
-        point = Point()
-
-        if self.nf:
-            point.uf += ddx[:, 0]
-        if self.np:
-            point.fp = -self.rp(p + dp)
-            point.fp -= self.kpf(p + dp) @ ddx[:, 0] if self.nf else 0.0
-
-        return point
+        return dl / np.sqrt(load)
 
 
 class ArcLength(Constraint):
@@ -47,24 +26,24 @@ class ArcLength(Constraint):
         super().__init__(nonlinear_function)
         self.beta = beta
 
-    def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
-        y = self.get_roots_predictor(p, ddx[:, 1], dl)
-        cps = self.get_point(p, dp, ddx, y)
+    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray, dl: float) -> float:
+        y = self.get_roots_predictor(p, ddx, dl)
+        cps = [self.get_point(p, ddx, i) for i in y]
         return self.select_root_predictor(p, sol, cps)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> Point:
+    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> float:
         y = self.get_roots_corrector(p, dp, ddx, dl)
-        cps = self.get_point(p, dp, ddx, y)
+        cps = [self.get_point(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(dp, cps)
 
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if self.nf:
-            a += np.dot(u, u) + self.beta ** 2 * self.ff2
+            a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * self.ff2
         if self.np:
             tmpa = self.kpp(p) @ self.up
             if self.nf:
-                tmpa += self.kpf(p) @ u
+                tmpa += self.kpf(p) @ u[:, 1]
             a += self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
@@ -98,20 +77,7 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def get_point(self, p: Point, dp: Point, u: np.ndarray, y: np.ndarray) -> List[Point]:
-        if self.np is not None and self.nf is None:
-            ddp = [-self.rp(p + dp) - y[i] * self.kpp(p + dp) @ self.up for i in range(2)]
-            return [Point(up=y[i] * self.up, fp=ddp[i], y=y[i]) for i in range(2)]
-        if self.nf is not None:
-            x = [u[:, 0] + i * u[:, 1] for i in y]
-            if self.np is None:
-                return [Point(uf=x[i], ff=y[i] * self.ff, y=y[i]) for i in range(2)]
-            else:
-                ddp = [-self.rp(p + dp) - self.kpf(p + dp) @ u[:, 0] - y[i] * (
-                        self.kpf(p + dp) @ u[:, 1] + self.kpp(p + dp) @ self.up) for i in range(2)]
-                return [Point(uf=x[i], up=y[i] * self.up, ff=y[i] * self.ff, fp=ddp[i], y=y[i]) for i in range(2)]
-
-    def select_root_corrector(self, dp: Point, cps: List[Point]) -> Point:
+    def select_root_corrector(self, dp: Point, cps: List[Point]) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.
@@ -124,11 +90,11 @@ class ArcLength(Constraint):
             if self.nf:
                 cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf) + np.dot(dp.up, dp.up + cps[i].up)
 
-        return cps[0] if cpd(0) >= cpd(1) else cps[1]
+        return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
 
-    def select_root_predictor(self, p: Point, sol: List[Point], cps: List[Point]) -> Point:
+    def select_root_predictor(self, p: Point, sol: List[Point], cps: List[Point]) -> float:
         if p.y == 0:
-            return cps[0] if cps[0].y > cps[1].y else cps[1]
+            return cps[0].y if cps[0].y > cps[1].y else cps[1].y
 
         else:
             if self.nf:
@@ -147,31 +113,27 @@ class ArcLength(Constraint):
                     vec22 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
                     vec2 = np.append(vec21, vec22)
 
-            return cps[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1]
+            return cps[0].y if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1].y
 
 
 class NewtonRaphsonByArcLength(ArcLength):
 
-    def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
-        y = self.get_roots_predictor(p, ddx[:, 1], dl)
-        cps = self.get_point(p, dp, ddx, y)
-        return cps[0]
+    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray, dl: float) -> float:
+        return self.get_roots_predictor(p, ddx, dl)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> Point:
-        y = self.get_roots_corrector(p, dp, ddx, dl)
-        cps = self.get_point(p, dp, ddx, y)
-        return cps[0]
+    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> float:
+        return self.get_roots_corrector(p, dp, ddx, dl)
 
-    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
         if self.nf:
             a += self.beta ** 2 * self.ff2
         if self.np:
             a += self.up2
 
-        return np.array([1, -1]) * dl / np.sqrt(a)
+        return dl / np.sqrt(a)
 
-    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
@@ -187,7 +149,7 @@ class NewtonRaphsonByArcLength(ArcLength):
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
 
-        return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
+        return (-a[1] + np.sqrt(d)) / (2 * a[0])
 
 
 class GeneralizedArcLength(ArcLength):
@@ -195,29 +157,29 @@ class GeneralizedArcLength(ArcLength):
         super().__init__(nonlinear_function, beta)
         self.alpha = alpha
 
-    def predictor(self, p: Point, dp: Point, ddx: np.ndarray, dl: float, sol: List[Point]) -> Point:
-        y = self.get_roots_predictor(p, ddx[:, 1], dl)
-        cps = self.get_point(p, dp, ddx, y)
-        return self.select_root_predictor(p, sol, cps) if self.alpha > 0.0 else cps[0]
+    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray, dl: float) -> float:
+        y = self.get_roots_predictor(p, ddx, dl)
+        cps = [self.get_point(p, ddx, i) for i in y]
+        return self.select_root_predictor(p, sol, cps) if self.alpha > 0.0 else cps[0].y
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> Point:
+    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, dl: float) -> float:
         y = self.get_roots_corrector(p, dp, ddx, dl)
-        cps = self.get_point(p, dp, ddx, y)
-        return self.select_root_corrector(dp, cps) if self.alpha > 0.0 else cps[0]
+        cps = [self.get_point(p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(dp, cps) if self.alpha > 0.0 else cps[0].y
 
-    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
         if self.nf:
-            a += self.alpha * np.dot(u, u) + self.beta ** 2 * self.ff2
+            a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * self.ff2
         if self.np:
             tmpa = self.kpp(p) @ self.up
             if self.nf:
-                tmpa += self.kpf(p) @ u
+                tmpa += self.kpf(p) @ u[:, 1]
             a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + self.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
