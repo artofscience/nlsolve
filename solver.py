@@ -18,6 +18,7 @@ class IterativeSolver:
         # create some aliases for commonly used functions
         self.constraint = constraint
         self.nlf = self.constraint.nlf
+        self.maximum_iterates = 1000
 
     def __call__(self, sol: List[Point], dl: float = 0.25) -> Tuple[Point, int, List[Point]]:
         print("Invoking iterative solver")
@@ -44,10 +45,16 @@ class IterativeSolver:
 
         tries = [p]
 
-        iterative_counter = 0
-        while np.any(np.abs(r) > 1e-6):
-            iterative_counter += 1
+        iterative_counter = 1 # start with 1 as we always do a prediction step
 
+        successfull_termination = True # initialize termination to be successful
+
+        # make corrections until termination criteria are met
+        while np.any(np.abs(r) > 1e-6):
+            iterative_counter += 1 # increase iterative solver counter
+
+            # if there are free degrees of freedom,
+            # then do the necessary solves to calculate the free motion
             if self.nlf.nf:
                 load = 1.0 * self.nlf.ff
                 load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
@@ -64,6 +71,12 @@ class IterativeSolver:
                 r = np.append(r, rf)
             if self.nlf.np:
                 r = np.append(r, self.nlf.rp(p + dp))
+
+            if iterative_counter > self.maximum_iterates:
+                successfull_termination = False
+                break
+
+        print("Algorithm succesfully terminated") if successfull_termination else print("Algorithm unsuccesfully terminated")
 
         # print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
@@ -83,6 +96,7 @@ class IncrementalSolver:
         For example, currently "only" a single solution_method is used and the type of load increment is fixed.
         """
         self.solution_method = solution_method
+        self.maximum_increments = 100
 
     def __call__(self, p: Point) -> Tuple[List[Point], List[List[Point]]]:
         """
@@ -121,7 +135,7 @@ class IncrementalSolver:
             equilibrium_solutions.append(p) # append equilibrium solution to storage
 
             # terminate algorithm if too many increments are used
-            if incremental_counter > 10:
+            if incremental_counter > self.maximum_increments:
                 succesfull_termination = False
                 break
 
