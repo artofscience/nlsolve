@@ -102,6 +102,8 @@ class IncrementalSolver:
         iterative_counter = 0 # counts total number of iterates (cumulative throughout increments)
         tries_storage = [] # stores the attempted states of equilibrium (multiple per increment)
 
+        succesfull_termination = True # set termination (un)succesfull parameter
+
         # currently very simple termination criteria (load proportionality parameter termination criteria)
         # ideally terminated at p.y == 1.0
         while p.y <= 1.0:
@@ -111,14 +113,20 @@ class IncrementalSolver:
             dp, iterates, tries = self.solution_method(equilibrium_solutions)
             p = p + dp # add incremental state to current state (if equilibrium found)
 
-            print("New equilibrium point found at dp.y = %f in %d iterates, new p.y = %f " % (dp.y, iterates, p.y))
+            print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
 
             iterative_counter += iterates # add iterates of current search to counter
             tries_storage.append(tries) # store tries of current increment to storage
 
             equilibrium_solutions.append(p) # append equilibrium solution to storage
 
-        print("Algorithm succesfully terminated")
+            # terminate algorithm if too many increments are used
+            if incremental_counter > 10:
+                succesfull_termination = False
+                break
+
+        print("Algorithm succesfully terminated") if succesfull_termination else print("Algorithm unsuccesfully terminated")
+
         print("Total number of increments: %d" % incremental_counter)
         print("Total number of iterates: %d" % iterative_counter)
 
