@@ -18,7 +18,7 @@ class IterativeSolver:
         self.constraint = constraint
         self.nlf = self.constraint.nlf
 
-    def __call__(self, sol: List[Point], dl: float = 1.0) -> Tuple[Point, int, List[Point]]:
+    def __call__(self, sol: List[Point], dl: float = 0.1) -> Tuple[Point, int, List[Point]]:
 
         p = sol[-1]
 
@@ -68,8 +68,7 @@ class IterativeSolver:
 
 
 class IncrementalSolver:
-    def __init__(self, solution_method: IterativeSolver, dl: float = 0.1) -> None:
-        self.dl = dl
+    def __init__(self, solution_method: IterativeSolver) -> None:
         self.solution_method = solution_method
 
     def __call__(self, p: Point) -> Tuple[List[Point], List[List[Point]]]:
@@ -82,7 +81,7 @@ class IncrementalSolver:
         while p.y <= 1.0:
             incremental_counter += 1
 
-            dp, iterates, tries = self.solution_method(equilibrium_solutions, self.dl)
+            dp, iterates, tries = self.solution_method(equilibrium_solutions)
             iterative_counter += iterates
             tries_storage.append(tries)
 
