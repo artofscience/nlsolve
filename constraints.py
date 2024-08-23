@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 
 State = np.ndarray[float] | None
 
+class DiscriminantError(Exception):
+    pass
 
 class Constraint(ABC):
     def __init__(self, dl: float = 0.1) -> None:
@@ -76,7 +78,10 @@ class ArcLength(Constraint):
         return self.select_root_predictor(nlf, p, sol, cps)
 
     def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
-        y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        try:
+            y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        except DiscriminantError:
+            raise DiscriminantError
         cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps)
 
@@ -117,7 +122,7 @@ class ArcLength(Constraint):
             a[2] += self.beta ** 2 * np.dot(tmpc, tmpc)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
-            raise ValueError("Discriminant of quadratic constraint equation is not positive!")
+            raise DiscriminantError("Discriminant of quadratic constraint equation is not positive: %2f < 0" % float(d))
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 

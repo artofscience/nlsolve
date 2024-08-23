@@ -2,8 +2,10 @@ from typing import List, Tuple
 
 import numpy as np
 
-from constraints import Constraint, Point, Structure
+from constraints import Constraint, Point, Structure, DiscriminantError
 
+class CounterError(Exception):
+    pass
 
 class IterativeSolver:
     """
@@ -73,7 +75,11 @@ class IterativeSolver:
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
-            y = self.constraint.corrector(self.nlf, p, dp, ddx)
+            try:
+                y = self.constraint.corrector(self.nlf, p, dp, ddx)
+            except DiscriminantError:
+                raise DiscriminantError
+
             dp += self.nlf.ddp(p + dp, ddx, y) # calculate correction based on iterative load parameter and update incremental state
 
             #endregion
@@ -84,8 +90,7 @@ class IterativeSolver:
 
             # check if maximum number of corrections is not exceeded
             if iterative_counter > self.maximum_iterates:
-                successful_termination = False
-                break
+                raise CounterError("Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_iterates))
 
         print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
 
@@ -142,30 +147,33 @@ class IncrementalSolver:
         iterative_counter = 0 # counts total number of iterates (cumulative throughout increments)
         tries_storage = [] # stores the attempted states of equilibrium (multiple per increment)
 
-        successful_termination = True # set termination (un)succesfull parameter
+        try:
+            # currently very simple termination criteria (load proportionality parameter termination criteria)
+            # ideally terminated at p.y == 1.0
+            while p.y <= 1.0:
+                incremental_counter += 1 # increase incremental counter
 
-        # currently very simple termination criteria (load proportionality parameter termination criteria)
-        # ideally terminated at p.y == 1.0
-        while p.y <= 1.0:
-            incremental_counter += 1 # increase incremental counter
+                # invoke solution method to find incremental state
+                try:
+                    dp, iterates, tries = self.solution_method(equilibrium_solutions)
+                except (DiscriminantError, CounterError) as error:
+                    print("{}: {}".format(type(error).__name__, error.args[0]))
 
-            # invoke solution method to find incremental state
-            dp, iterates, tries = self.solution_method(equilibrium_solutions)
-            p = p + dp # add incremental state to current state (if equilibrium found)
+                p = p + dp # add incremental state to current state (if equilibrium found)
 
-            # print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
+                print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
 
-            iterative_counter += iterates # add iterates of current search to counter
-            tries_storage.append(tries) # store tries of current increment to storage
+                iterative_counter += iterates # add iterates of current search to counter
+                tries_storage.append(tries) # store tries of current increment to storage
 
-            equilibrium_solutions.append(p) # append equilibrium solution to storage
+                equilibrium_solutions.append(p) # append equilibrium solution to storage
 
-            # terminate algorithm if too many increments are used
-            if incremental_counter > self.maximum_increments:
-                successful_termination = False
-                break
+                # terminate algorithm if too many increments are used
+                if incremental_counter > self.maximum_increments:
+                    raise CounterError("Maximum number of increments %2d > %2d" % (incremental_counter, self.maximum_increments))
 
-        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
+        except CounterError as error:
+            print("{}: {}".format(type(error).__name__, error.args[0]))
 
         print("Total number of increments: %d" % incremental_counter)
         print("Total number of iterates: %d" % iterative_counter)
