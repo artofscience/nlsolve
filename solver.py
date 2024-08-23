@@ -2,10 +2,14 @@ from typing import List, Tuple
 
 import numpy as np
 
-from constraints import Constraint, Point
+from constraints import Constraint, Point, Structure
 
 
 class IterativeSolver:
+    """
+    The IterativeSolver is the core of this API, its function is to find a next equilibrium point,
+    that is solving the provided system of nonlinear equations given some constraint function.
+    """
     def __init__(self, constraint: Constraint) -> None:
         """
         Initialization of the iterative solver.
@@ -16,11 +20,11 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.constraint = constraint
-        self.nlf = self.constraint.nlf
-        self.maximum_iterates = 1000
+        self.constraint: Constraint = constraint
+        self.nlf: Structure = self.constraint.nlf
+        self.maximum_iterates: int = 1000
 
-    def __call__(self, sol: List[Point], dl: float = 0.25) -> Tuple[Point, int, List[Point]]:
+    def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
         print("Invoking iterative solver")
 
         p = sol[-1]
@@ -33,7 +37,7 @@ class IterativeSolver:
             load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0
             ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
 
-        y = self.constraint.predictor(p, sol, ddx, dl)
+        y = self.constraint.predictor(p, sol, ddx)
         dp += self.nlf.get_point(p, ddx, y)
 
         r = np.array([])
@@ -47,7 +51,7 @@ class IterativeSolver:
 
         iterative_counter = 1 # start with 1 as we always do a prediction step
 
-        successfull_termination = True # initialize termination to be successful
+        successful_termination = True # initialize termination to be successful
 
         # make corrections until termination criteria are met
         while np.any(np.abs(r) > 1e-6):
@@ -60,7 +64,7 @@ class IterativeSolver:
                 load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
                 ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([rf, load]).T)
 
-            y = self.constraint.corrector(p, dp, ddx, dl)
+            y = self.constraint.corrector(p, dp, ddx)
             dp += self.nlf.get_point(p + dp, ddx, y)
 
             tries.append(p + dp)
@@ -73,10 +77,10 @@ class IterativeSolver:
                 r = np.append(r, self.nlf.rp(p + dp))
 
             if iterative_counter > self.maximum_iterates:
-                successfull_termination = False
+                successful_termination = False
                 break
 
-        print("Algorithm succesfully terminated") if successfull_termination else print("Algorithm unsuccesfully terminated")
+        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
 
         # print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
@@ -116,7 +120,7 @@ class IncrementalSolver:
         iterative_counter = 0 # counts total number of iterates (cumulative throughout increments)
         tries_storage = [] # stores the attempted states of equilibrium (multiple per increment)
 
-        succesfull_termination = True # set termination (un)succesfull parameter
+        successful_termination = True # set termination (un)succesfull parameter
 
         # currently very simple termination criteria (load proportionality parameter termination criteria)
         # ideally terminated at p.y == 1.0
@@ -136,10 +140,10 @@ class IncrementalSolver:
 
             # terminate algorithm if too many increments are used
             if incremental_counter > self.maximum_increments:
-                succesfull_termination = False
+                successful_termination = False
                 break
 
-        print("Algorithm succesfully terminated") if succesfull_termination else print("Algorithm unsuccesfully terminated")
+        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
 
         print("Total number of increments: %d" % incremental_counter)
         print("Total number of iterates: %d" % iterative_counter)
