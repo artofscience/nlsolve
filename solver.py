@@ -21,69 +21,91 @@ class IterativeSolver:
 
         # create some aliases for commonly used functions
         self.nlf: Structure = nlf # nonlinear system of equations
-        self.constraint: Constraint = constraint # constraint function used
+        self.constraint: Constraint = constraint # constraint function used (operates on nlf)
         self.maximum_iterates: int = 1000 # maximum allowed number of iterates before premature termination
 
     def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
-        # print("Invoking iterative solver")
-
-        p = sol[-1]
-
-        dp = 0.0 * p
-        ddx = np.zeros((self.nlf.nf, 2), dtype=float) if self.nlf.nf else None
-
-        if self.nlf.nf:
-            load = 1.0 * self.nlf.ff
-            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0
-            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
-
-        y = self.constraint.predictor(self.nlf, p, sol, ddx)
-        dp += self.nlf.get_point(p, ddx, y)
-
-        r = np.array([])
-        if self.nlf.nf:
-            rf = self.nlf.rf(p + dp)
-            r = np.append(r, rf)
-        if self.nlf.np:
-            r = np.append(r, self.nlf.rp(p + dp))
-
-        tries = [p]
-
-        iterative_counter = 1 # start with 1 as we always do a prediction step
+        print("Invoking iterative solver")
 
         successful_termination = True # initialize termination to be successful
+
+        p = sol[-1] # takes the initial equilibrium point (what if this is not in equilibrium?)
+        tries = [p] # initialize storage for attempted states and add initial point
+
+        # dp = 0.0 * p # make a copy of the structure of p and reset all entries to zeros
+
+        iterative_counter = 0 # start with 0 as we count the corrections only
+
+        #region PREDICTOR
+
+        # initialize structure of solve return values if free degrees of freedom
+        ddx = np.zeros((self.nlf.nf, 2), dtype=float) if self.nlf.nf else None
+
+        # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
+        # note: for predictor ddx0 = 0, hence only a single rhs for this solve
+        if self.nlf.nf:
+            load = 1.0 * self.nlf.ff
+            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0 # adds to rhs if nonzero prescribed dof
+            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
+
+        # call to the predictor of the constraint function returning iterative load parameter
+        # note it has access to previous equilibrium points (sol) and dp = 0
+        # note for first iterate dy = ddy and dp = ddp
+        ddy = self.constraint.predictor(self.nlf, p, sol, ddx)
+        dp = self.nlf.ddp(p, ddx, ddy) # calculate prediction based on iterative load parameter
+
+        #endregion
+
+        # combine residuals associated to free and prescribed dofs (if available) for termiantion criteria
+        r = self.get_r(p + dp)
 
         # make corrections until termination criteria are met
         while np.any(np.abs(r) > 1e-6):
             iterative_counter += 1 # increase iterative solver counter
 
-            # if there are free degrees of freedom,
-            # then do the necessary solves to calculate the free motion
+            #region CORRECTOR
+
+            # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.nlf.nf:
                 load = 1.0 * self.nlf.ff
                 load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
-                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([rf, load]).T)
+                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([self.nlf.rf(p + dp), load]).T)
 
+            # calculate correction of proportional load parameter
+            # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
             y = self.constraint.corrector(self.nlf, p, dp, ddx)
-            dp += self.nlf.get_point(p + dp, ddx, y)
+            dp += self.nlf.ddp(p + dp, ddx, y) # calculate correction based on iterative load parameter and update incremental state
 
-            tries.append(p + dp)
+            #endregion
 
-            r = np.array([])
-            if self.nlf.nf:
-                rf = self.nlf.rf(p + dp)
-                r = np.append(r, rf)
-            if self.nlf.np:
-                r = np.append(r, self.nlf.rp(p + dp))
+            tries.append(p + dp) # add attempt to tries
 
+            r = self.get_r(p + dp) # retrieve residual load for termination criteria
+
+            # check if maximum number of corrections is not exceeded
             if iterative_counter > self.maximum_iterates:
                 successful_termination = False
                 break
 
-        # print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
+        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
 
-        # print("Number of corrections: %d" % iterative_counter)
+        print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
+
+    def get_r(self, p):
+        """
+        Retrieve residual load at state p
+
+        :param p: state
+        :return: residual load
+        """
+        r = np.array([])
+        if self.nlf.nf:
+            rf = self.nlf.rf(p)
+            r = np.append(r, rf)
+        if self.nlf.np:
+            r = np.append(r, self.nlf.rp(p))
+        return r
 
 
 class IncrementalSolver:

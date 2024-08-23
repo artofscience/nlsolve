@@ -72,12 +72,12 @@ class ArcLength(Constraint):
 
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.get_point(p, ddx, i) for i in y]
+        cps = [nlf.ddp(p, ddx, i) for i in y]
         return self.select_root_predictor(nlf, p, sol, cps)
 
     def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
         y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
-        cps = [nlf.get_point(p + dp, ddx, i) for i in y]
+        cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps)
 
     def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
@@ -197,12 +197,12 @@ class GeneralizedArcLength(ArcLength):
 
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.get_point(p, ddx, i) for i in y]
+        cps = [nlf.ddp(p, ddx, i) for i in y]
         return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
 
     def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
         y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
-        cps = [nlf.get_point(p + dp, ddx, i) for i in y]
+        cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
 
     def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> float:
@@ -360,7 +360,7 @@ class Structure(ABC):
         """
         return None
 
-    def get_point(self, p: Point, u: np.ndarray, y: float) -> Point:
+    def ddp(self, p: Point, u: np.ndarray, y: float) -> Point:
         """
         Provides the iterative updated state given some iterative load parameter.
 
