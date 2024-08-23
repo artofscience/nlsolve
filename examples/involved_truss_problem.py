@@ -66,8 +66,7 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
 if __name__ == "__main__":
 
     print("Load-based NR")
-    constraint1 = NewtonRaphson(InvolvedTrussProblemLoadBased())
-    solution_method1 = IterativeSolver(constraint1)
+    solution_method1 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphson())
     solver1 = IncrementalSolver(solution_method1)
     solution1, tries1 = solver1(Point(uf=np.zeros(2), ff=np.zeros(2)))
 
@@ -83,8 +82,7 @@ if __name__ == "__main__":
         plt.axhline(y=i.y, color='r')
 
     print("Motion-based NR")
-    constraint3 = NewtonRaphson(InvolvedTrussProblemMotionBased())
-    solution_method3 = IterativeSolver(constraint3)
+    solution_method3 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphson())
     solver3 = IncrementalSolver(solution_method3)
     solution3, tries3 = solver3(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 
@@ -99,8 +97,7 @@ if __name__ == "__main__":
         plt.axvline(x=i.up, color='b')
 
     print("Load-based ARC")
-    constraint2 = ArcLength(InvolvedTrussProblemLoadBased())
-    solution_method2 = IterativeSolver(constraint2)
+    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), ArcLength())
     solver2 = IncrementalSolver(solution_method2)
     solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
 
@@ -116,8 +113,7 @@ if __name__ == "__main__":
     plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based ARC")
-    constraint4 = ArcLength(InvolvedTrussProblemMotionBased())
-    solution_method4 = IterativeSolver(constraint4)
+    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), ArcLength())
     solver4 = IncrementalSolver(solution_method4)
     solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 
@@ -133,8 +129,7 @@ if __name__ == "__main__":
     plt.plot(c, [-i.fp for i in solution4], 'co', alpha=0.5)
 
     print("Load-based ARC2")
-    constraint2 = NewtonRaphsonByArcLength(InvolvedTrussProblemLoadBased())
-    solution_method2 = IterativeSolver(constraint2)
+    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphsonByArcLength())
     solver2 = IncrementalSolver(solution_method2)
     solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
 
@@ -150,8 +145,7 @@ if __name__ == "__main__":
     plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based ARC2")
-    constraint4 = NewtonRaphsonByArcLength(InvolvedTrussProblemMotionBased())
-    solution_method4 = IterativeSolver(constraint4)
+    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphsonByArcLength())
     solver4 = IncrementalSolver(solution_method4)
     solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 
@@ -167,8 +161,7 @@ if __name__ == "__main__":
     plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
 
     print("Load-based GENERAL a0")
-    constraint2 = GeneralizedArcLength(InvolvedTrussProblemLoadBased(), alpha=0.0)
-    solution_method2 = IterativeSolver(constraint2)
+    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=0.0))
     solver2 = IncrementalSolver(solution_method2)
     solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
 
@@ -184,8 +177,7 @@ if __name__ == "__main__":
     plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based GENERAL a0")
-    constraint4 = GeneralizedArcLength(InvolvedTrussProblemMotionBased(), alpha=0.0)
-    solution_method4 = IterativeSolver(constraint4)
+    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), GeneralizedArcLength(alpha=0.0))
     solver4 = IncrementalSolver(solution_method4)
     solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 
@@ -201,8 +193,7 @@ if __name__ == "__main__":
     plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
 
     print("Load-based GENERAL a1")
-    constraint2 = GeneralizedArcLength(InvolvedTrussProblemLoadBased(), alpha=1.0)
-    solution_method2 = IterativeSolver(constraint2)
+    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=1.0))
     solver2 = IncrementalSolver(solution_method2)
     solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
 
@@ -218,8 +209,7 @@ if __name__ == "__main__":
     plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based GENERAL a1")
-    constraint4 = GeneralizedArcLength(InvolvedTrussProblemMotionBased(), alpha=1.0)
-    solution_method4 = IterativeSolver(constraint4)
+    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), GeneralizedArcLength(alpha=1.0))
     solver4 = IncrementalSolver(solution_method4)
     solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 

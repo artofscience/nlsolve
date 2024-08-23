@@ -44,51 +44,43 @@ class TrussProblemMotionBased(TrussProblem):
 
 
 if __name__ == "__main__":
-    constraint1 = NewtonRaphson(TrussProblemMotionBased())
-    solution_method1 = IterativeSolver(constraint1)
-    solver1 = IncrementalSolver(solution_method1)
-    solution1, tries1 = solver1(Point(up=np.array([0.0]), fp=np.array([0.0])))
+    solver = IncrementalSolver(IterativeSolver(TrussProblemMotionBased(), NewtonRaphson()))
+    solution, tries = solver(Point(up=np.array([0.0]), fp=np.array([0.0])))
 
-    for a in tries1:
+    for a in tries:
         plt.plot([i.uf for i in a], [i.ff for i in a], 'ko', alpha=0.1)
 
-    plt.plot([i.up for i in solution1], [i.fp for i in solution1], 'bo')
+    plt.plot([i.up for i in solution], [i.fp for i in solution], 'bo')
 
-    for i in solution1:
+    for i in solution:
         plt.axvline(x=i.up, color='b', alpha=0.1)
 
-    constraint2 = NewtonRaphson(TrussProblemLoadBased())
-    solution_method2 = IterativeSolver(constraint2)
-    solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2(Point(uf=np.array([0.0]), ff=np.array([0.0])))
+    solver = IncrementalSolver(IterativeSolver(TrussProblemLoadBased(), NewtonRaphson()))
+    solution, tries = solver(Point(uf=np.array([0.0]), ff=np.array([0.0])))
 
-    for a in tries2:
+    for a in tries:
         plt.plot([i.uf for i in a], [i.ff for i in a], 'ko', alpha=0.1)
-    plt.plot([i.uf for i in solution2], [i.ff for i in solution2], 'ro')
+    plt.plot([i.uf for i in solution], [i.ff for i in solution], 'ro')
 
-    for i in solution2:
+    for i in solution:
         plt.axhline(y=i.ff, color='r', alpha=0.1)
 
-    constraint3 = ArcLength(TrussProblemLoadBased())
-    solution_method3 = IterativeSolver(constraint3)
-    solver3 = IncrementalSolver(solution_method3)
-    solution3, tries3 = solver3(Point(uf=np.array([0.0]), ff=np.array([0.0])))
+    solver = IncrementalSolver(IterativeSolver(TrussProblemLoadBased(), ArcLength()))
+    solution, tries = solver(Point(uf=np.array([0.0]), ff=np.array([0.0])))
 
-    for a in tries3:
+    for a in tries:
         plt.plot([i.uf for i in a], [i.ff for i in a], 'ko', alpha=0.1)
-    plt.plot([i.uf for i in solution3], [i.ff for i in solution3], 'go')
-    for i in solution3:
+    plt.plot([i.uf for i in solution], [i.ff for i in solution], 'go')
+    for i in solution:
         plt.gca().add_patch(plt.Circle((i.uf, i.ff), 0.1, color='r', fill=False, alpha=0.1))
 
-    constraint4 = ArcLength(TrussProblemMotionBased())
-    solution_method4 = IterativeSolver(constraint4)
-    solver4 = IncrementalSolver(solution_method4)
-    solution4, tries4 = solver4(Point(up=np.array([0.0]), fp=np.array([0.0])))
+    solver = IncrementalSolver(IterativeSolver(TrussProblemMotionBased(), ArcLength()))
+    solution, tries = solver(Point(up=np.array([0.0]), fp=np.array([0.0])))
 
-    for a in tries4:
+    for a in tries:
         plt.plot([i.uf for i in a], [i.ff for i in a], 'ko', alpha=0.1)
-    plt.plot([i.up for i in solution4], [i.fp for i in solution4], 'ko')
-    for i in solution4:
+    plt.plot([i.up for i in solution], [i.fp for i in solution], 'ko')
+    for i in solution:
         plt.gca().add_patch(plt.Circle((i.up, i.fp), 0.1, color='r', fill=False, alpha=0.1))
 
     plt.gca().axis('equal')

@@ -10,7 +10,7 @@ class IterativeSolver:
     The IterativeSolver is the core of this API, its function is to find a next equilibrium point,
     that is solving the provided system of nonlinear equations given some constraint function.
     """
-    def __init__(self, constraint: Constraint) -> None:
+    def __init__(self, nlf: Structure, constraint: Constraint) -> None:
         """
         Initialization of the iterative solver.
 
@@ -20,12 +20,12 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.constraint: Constraint = constraint
-        self.nlf: Structure = self.constraint.nlf
-        self.maximum_iterates: int = 1000
+        self.nlf: Structure = nlf # nonlinear system of equations
+        self.constraint: Constraint = constraint # constraint function used
+        self.maximum_iterates: int = 1000 # maximum allowed number of iterates before premature termination
 
     def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
-        print("Invoking iterative solver")
+        # print("Invoking iterative solver")
 
         p = sol[-1]
 
@@ -37,7 +37,7 @@ class IterativeSolver:
             load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0
             ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
 
-        y = self.constraint.predictor(p, sol, ddx)
+        y = self.constraint.predictor(self.nlf, p, sol, ddx)
         dp += self.nlf.get_point(p, ddx, y)
 
         r = np.array([])
@@ -64,7 +64,7 @@ class IterativeSolver:
                 load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
                 ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([rf, load]).T)
 
-            y = self.constraint.corrector(p, dp, ddx)
+            y = self.constraint.corrector(self.nlf, p, dp, ddx)
             dp += self.nlf.get_point(p + dp, ddx, y)
 
             tries.append(p + dp)
@@ -80,7 +80,7 @@ class IterativeSolver:
                 successful_termination = False
                 break
 
-        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
+        # print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
 
         # print("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
@@ -131,7 +131,7 @@ class IncrementalSolver:
             dp, iterates, tries = self.solution_method(equilibrium_solutions)
             p = p + dp # add incremental state to current state (if equilibrium found)
 
-            print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
+            # print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
 
             iterative_counter += iterates # add iterates of current search to counter
             tries_storage.append(tries) # store tries of current increment to storage
