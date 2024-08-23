@@ -12,7 +12,7 @@ State = np.ndarray[float] | None
 
 
 class Constraint(ABC):
-    def __init__(self, nonlinear_function: Structure) -> None:
+    def __init__(self, dl: float = 0.1) -> None:
         """
         Initialization of the constraint function used to solve the system of nonlinear equations.
 
@@ -20,14 +20,14 @@ class Constraint(ABC):
         """
 
         # some aliases for commonly used functions
-        self.nlf: Structure = nonlinear_function
-        self.dl: float = 0.1 # characteristic magnitude of constraint function (e.g. arc-length)
+        self.dl: float = dl # characteristic magnitude of constraint function (e.g. arc-length)
 
     @abstractmethod
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any corrector step (iterate i > 1).
 
+        :param nlf: system of nonlinear equations to solve
         :param p: current state (load, motion and load parameter)
         :param dp: incremental state
         :param ddx: resultants of the solve following Batoz and Dhatt
@@ -37,10 +37,11 @@ class Constraint(ABC):
         pass
 
     @abstractmethod
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any predictor step (iterate i = 0 AND increment j > 0).
 
+        :param nlf: system of nonlinear equations to solve
         :param p: current state (load, motion and load parameter)
         :param sol: previous found equilibrium points
         :param ddx: resultants of the solve following Batoz and Dhatt
@@ -52,65 +53,65 @@ class Constraint(ABC):
 
 class NewtonRaphson(Constraint):
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
         return 0.0
 
-    def predictor(self, p: Point,  sol: List[Point], ddx: np.ndarray) -> Point:
+    def predictor(self, nlf: Structure, p: Point,  sol: List[Point], ddx: np.ndarray) -> Point:
 
         load = 0.0
-        load += self.nlf.up2 if self.nlf.np else 0.0
-        load += self.nlf.ff2 if self.nlf.nf else 0.0
+        load += nlf.up2 if nlf.np else 0.0
+        load += nlf.ff2 if nlf.nf else 0.0
 
         return self.dl / np.sqrt(load)
 
 
 class ArcLength(Constraint):
-    def __init__(self, nonlinear_function: Structure, beta: float = 1.0) -> None:
-        super().__init__(nonlinear_function)
+    def __init__(self, dl: float = 0.1, beta: float = 1.0) -> None:
+        super().__init__(dl)
         self.beta = beta
 
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
-        y = self.get_roots_predictor(p, ddx, self.dl)
-        cps = [self.nlf.get_point(p, ddx, i) for i in y]
-        return self.select_root_predictor(p, sol, cps)
+    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+        y = self.get_roots_predictor(nlf, p, ddx, self.dl)
+        cps = [nlf.get_point(p, ddx, i) for i in y]
+        return self.select_root_predictor(nlf, p, sol, cps)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
-        y = self.get_roots_corrector(p, dp, ddx, self.dl)
-        cps = [self.nlf.get_point(p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(dp, cps)
+    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+        y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        cps = [nlf.get_point(p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(nlf, dp, cps)
 
-    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
-        if self.nlf.nf:
-            a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * self.nlf.ff2
-        if self.nlf.np:
-            tmpa = self.nlf.kpp(p) @ self.nlf.up
-            if self.nlf.nf:
-                tmpa += self.nlf.kpf(p) @ u[:, 1]
-            a += self.beta ** 2 * np.dot(tmpa, tmpa) + self.nlf.up2
+        if nlf.nf:
+            a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
+        if nlf.np:
+            tmpa = nlf.kpp(p) @ nlf.up
+            if nlf.nf:
+                tmpa += nlf.kpf(p) @ u[:, 1]
+            a += self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
-        if self.nlf.nf:
+        if nlf.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta ** 2 * self.nlf.ff2
+            a[0] += self.beta ** 2 * nlf.ff2
             a[1] += 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
             a[2] += np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
-        if self.nlf.np:
-            a[0] += self.nlf.up2
-            a[1] += 2 * np.dot(self.nlf.up, dp.up)
+        if nlf.np:
+            a[0] += nlf.up2
+            a[1] += 2 * np.dot(nlf.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.nlf.kpp(p + dp) @ self.nlf.up
-            tmpc = dp.fp - self.nlf.rp(p + dp)
-            if self.nlf.nf:
-                tmpa += self.nlf.kpf(p + dp) @ u[:, 1]
-                tmpc -= self.nlf.kpf(p + dp) @ u[:, 0]
+            tmpa = nlf.kpp(p + dp) @ nlf.up
+            tmpc = dp.fp - nlf.rp(p + dp)
+            if nlf.nf:
+                tmpa += nlf.kpf(p + dp) @ u[:, 1]
+                tmpc -= nlf.kpf(p + dp) @ u[:, 0]
             a[0] += self.beta ** 2 * np.dot(tmpa, tmpa)
             a[1] -= 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.beta ** 2 * np.dot(tmpc, tmpc)
@@ -120,35 +121,35 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def select_root_corrector(self, dp: Point, cps: List[Point]) -> float:
+    def select_root_corrector(self, nlf: Structure, dp: Point, cps: List[Point]) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.
         Note: this rule cannot be used in the first iteration since the initial corrections are equal to zero at the beginning of each increment.
         """
-        if self.nlf.nf:
+        if nlf.nf:
             cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf)
-        if self.nlf.np:
+        if nlf.np:
             cpd = lambda i: np.dot(dp.up, dp.up + cps[i].up)
-            if self.nlf.nf:
+            if nlf.nf:
                 cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf) + np.dot(dp.up, dp.up + cps[i].up)
 
         return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
 
-    def select_root_predictor(self, p: Point, sol: List[Point], cps: List[Point]) -> float:
+    def select_root_predictor(self, nlf: Structure, p: Point, sol: List[Point], cps: List[Point]) -> float:
         if p.y == 0:
             return cps[0].y if cps[0].y > cps[1].y else cps[1].y
 
         else:
-            if self.nlf.nf:
+            if nlf.nf:
                 vec1 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
                 vec2 = np.append(sol[-2].uf - p.uf - cps[1].uf, sol[-2].ff - p.ff - cps[1].ff)
 
-            if self.nlf.np:
+            if nlf.np:
                 vec1 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
                 vec2 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
 
-                if self.nlf.nf:
+                if nlf.nf:
                     vec11 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
                     vec12 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
                     vec1 = np.append(vec11, vec12)
@@ -161,26 +162,26 @@ class ArcLength(Constraint):
 
 class NewtonRaphsonByArcLength(ArcLength):
 
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         a = 0.0
-        if self.nlf.nf:
-            a += self.beta ** 2 * self.nlf.ff2
-        if self.nlf.np:
-            a += self.nlf.up2
+        if nlf.nf:
+            a += self.beta ** 2 * nlf.ff2
+        if nlf.np:
+            a += nlf.up2
 
         return self.dl / np.sqrt(a)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
         a = np.zeros(3)
 
         a[2] -= self.dl ** 2
-        if self.nlf.nf:
-            a[0] += self.beta ** 2 * self.nlf.ff2
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.nlf.ff)
+        if nlf.nf:
+            a[0] += self.beta ** 2 * nlf.ff2
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
-        if self.nlf.np:
-            a[0] += self.nlf.up2
-            a[1] += 2 * np.dot(self.nlf.up, dp.up)
+        if nlf.np:
+            a[0] += nlf.up2
+            a[1] += 2 * np.dot(nlf.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -190,52 +191,52 @@ class NewtonRaphsonByArcLength(ArcLength):
 
 
 class GeneralizedArcLength(ArcLength):
-    def __init__(self, nonlinear_function: Structure, alpha: float = 1.0, beta: float = 1.0) -> None:
-        super().__init__(nonlinear_function, beta)
+    def __init__(self, dl: float = 0.1, alpha: float = 1.0, beta: float = 1.0) -> None:
+        super().__init__(dl, beta)
         self.alpha = alpha
 
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
-        y = self.get_roots_predictor(p, ddx, self.dl)
-        cps = [self.nlf.get_point(p, ddx, i) for i in y]
-        return self.select_root_predictor(p, sol, cps) if self.alpha > 0.0 else cps[0].y
+    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+        y = self.get_roots_predictor(nlf, p, ddx, self.dl)
+        cps = [nlf.get_point(p, ddx, i) for i in y]
+        return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
-        y = self.get_roots_corrector(p, dp, ddx, self.dl)
-        cps = [self.nlf.get_point(p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(dp, cps) if self.alpha > 0.0 else cps[0].y
+    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+        y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        cps = [nlf.get_point(p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
 
-    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
-        if self.nlf.nf:
-            a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * self.nlf.ff2
-        if self.nlf.np:
-            tmpa = self.nlf.kpp(p) @ self.nlf.up
-            if self.nlf.nf:
-                tmpa += self.nlf.kpf(p) @ u[:, 1]
-            a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + self.nlf.up2
+        if nlf.nf:
+            a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
+        if nlf.np:
+            tmpa = nlf.kpp(p) @ nlf.up
+            if nlf.nf:
+                tmpa += nlf.kpf(p) @ u[:, 1]
+            a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.up2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
-        if self.nlf.nf:
+        if nlf.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
-            a[0] += self.beta ** 2 * self.nlf.ff2
+            a[0] += self.beta ** 2 * nlf.ff2
             a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, self.nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
             a[2] += self.alpha * np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
-        if self.nlf.np:
-            a[0] += self.nlf.up2
-            a[1] += 2 * np.dot(self.nlf.up, dp.up)
+        if nlf.np:
+            a[0] += nlf.up2
+            a[1] += 2 * np.dot(nlf.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
-            tmpa = self.nlf.kpp(p + dp) @ self.nlf.up
-            tmpc = dp.fp - self.nlf.rp(p + dp)
-            if self.nlf.nf:
-                tmpa += self.nlf.kpf(p + dp) @ u[:, 1]
-                tmpc -= self.nlf.kpf(p + dp) @ u[:, 0]
+            tmpa = nlf.kpp(p + dp) @ nlf.up
+            tmpc = dp.fp - nlf.rp(p + dp)
+            if nlf.nf:
+                tmpa += nlf.kpf(p + dp) @ u[:, 1]
+                tmpc -= nlf.kpf(p + dp) @ u[:, 0]
             a[0] += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa)
             a[1] -= self.alpha * 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.alpha * self.beta ** 2 * np.dot(tmpc, tmpc)
