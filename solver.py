@@ -16,7 +16,8 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
     def __init__(self, nlf: Structure, constraint: Constraint,
-                 name: str = "IterativeSolver", logging_level: int = logging.DEBUG) -> None:
+                 name: str = None, logging_level: int = logging.DEBUG,
+                 maximum_corrections: int = 1000) -> None:
         """
         Initialization of the iterative solver.
 
@@ -28,12 +29,12 @@ class IterativeSolver:
         # create some aliases for commonly used functions
         self.nlf: Structure = nlf # nonlinear system of equations
         self.constraint: Constraint = constraint # constraint function used (operates on nlf)
-        self.maximum_iterates: int = 1000 # maximum allowed number of iterates before premature termination
+        self.maximum_corrections: int = maximum_corrections # maximum allowed number of iterates before premature termination
 
-        self.__name__ = name
+        self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
-        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
     def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
         self.logger.debug("Invoking iterative solver")
@@ -99,8 +100,8 @@ class IterativeSolver:
             r = self.get_r(p + dp) # retrieve residual load for termination criteria
 
             # check if maximum number of corrections is not exceeded
-            if iterative_counter > self.maximum_iterates:
-                raise CounterError("Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_iterates))
+            if iterative_counter > self.maximum_corrections:
+                raise CounterError("Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections))
 
         self.logger.debug("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
@@ -126,7 +127,8 @@ class IncrementalSolver:
     The IncrementalSolver solves a given system of nonlinear equations by pseudo-time stepping.
     """
     def __init__(self, solution_method: IterativeSolver,
-                 name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG) -> None:
+                 name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
+                 maximum_increments: int = 1000) -> None:
         """
         Initialization of the incremental solver.
 
@@ -136,7 +138,7 @@ class IncrementalSolver:
         For example, currently "only" a single solution_method is used and the type of load increment is fixed.
         """
         self.solution_method = solution_method
-        self.maximum_increments = 100
+        self.maximum_increments: int = maximum_increments
 
         self.__name__ = name
 
