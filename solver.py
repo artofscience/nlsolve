@@ -1,20 +1,24 @@
-from typing import List, Tuple
 import sys
+from typing import List, Tuple
 
 import numpy as np
 
 from constraints import Constraint, Point, Structure, DiscriminantError
 
+
 class CounterError(Exception):
     pass
 
+
 import logging
+
 
 class IterativeSolver:
     """
     The IterativeSolver is the core of this API, its function is to find a next equilibrium point,
     that is solving the provided system of nonlinear equations given some constraint function.
     """
+
     def __init__(self, nlf: Structure, constraint: Constraint,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
@@ -27,9 +31,10 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.nlf: Structure = nlf # nonlinear system of equations
-        self.constraint: Constraint = constraint # constraint function used (operates on nlf)
-        self.maximum_corrections: int = maximum_corrections # maximum allowed number of iterates before premature termination
+        self.nlf: Structure = nlf  # nonlinear system of equations
+        self.constraint: Constraint = constraint  # constraint function used (operates on nlf)
+        self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
+        self.residual_norm_tolerance: float = 1e-3
 
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
@@ -39,14 +44,14 @@ class IterativeSolver:
     def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
         self.logger.debug("Invoking iterative solver")
 
-        p = sol[-1] # takes the initial equilibrium point (what if this is not in equilibrium?)
-        tries = [p] # initialize storage for attempted states and add initial point
+        p = sol[-1]  # takes the initial equilibrium point (what if this is not in equilibrium?)
+        tries = [p]  # initialize storage for attempted states and add initial point
 
         # dp = 0.0 * p # make a copy of the structure of p and reset all entries to zeros
 
-        iterative_counter = 0 # start with 0 as we count the corrections only
+        iterative_counter = 0  # start with 0 as we count the corrections only
 
-        #region PREDICTOR
+        # region PREDICTOR
 
         # initialize structure of solve return values if free degrees of freedom
         ddx = np.zeros((self.nlf.nf, 2), dtype=float) if self.nlf.nf else None
@@ -55,7 +60,7 @@ class IterativeSolver:
         # note: for predictor ddx0 = 0, hence only a single rhs for this solve
         if self.nlf.nf:
             load = 1.0 * self.nlf.ff
-            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0 # adds to rhs if nonzero prescribed dof
+            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0  # adds to rhs if nonzero prescribed dof
             ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
 
         # call to the predictor of the constraint function returning iterative load parameter
@@ -64,18 +69,22 @@ class IterativeSolver:
         ddy = self.constraint.predictor(self.nlf, p, sol, ddx)
         self.logger.debug("Predictor 0: ddy = %+f" % ddy)
 
-        dp = self.nlf.ddp(p, ddx, ddy) # calculate prediction based on iterative load parameter
+        dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
 
-        #endregion
+        # endregion
 
         # combine residuals associated to free and prescribed dofs (if available) for termiantion criteria
         r = self.get_r(p + dp)
 
-        # make corrections until termination criteria are met
-        while np.any(np.abs(r) > 1e-6):
-            iterative_counter += 1 # increase iterative solver counter
+        rnorm_ref = np.linalg.norm(r)
+        rmax_ref = np.amax(np.abs(r))
 
-            #region CORRECTOR
+        # make corrections until termination criteria are met
+        while (rmax := np.amax(np.abs(r))) > 1e-3 or (rnorm := np.linalg.norm(r)) > 1e-3 or rnorm > 1e-1 * rnorm_ref:
+
+            iterative_counter += 1  # increase iterative solver counter
+
+            # region CORRECTOR
 
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.nlf.nf:
@@ -87,7 +96,7 @@ class IterativeSolver:
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
             try:
                 ddy = self.constraint.corrector(self.nlf, p, dp, ddx)
-                self.logger.debug("Corrector %d: ddy = %+f" % (iterative_counter, ddy))
+                self.logger.debug("Corrector %d: ddy = %+e" % (iterative_counter, ddy))
             except DiscriminantError:
                 raise DiscriminantError
 
@@ -95,14 +104,17 @@ class IterativeSolver:
 
             #endregion
 
-            tries.append(p + dp) # add attempt to tries
+            tries.append(p + dp)  # add attempt to tries
 
-            r = self.get_r(p + dp) # retrieve residual load for termination criteria
+            r = self.get_r(p + dp)  # retrieve residual load for termination criteria
 
             # check if maximum number of corrections is not exceeded
             if iterative_counter > self.maximum_corrections:
-                raise CounterError("Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections))
+                raise CounterError(
+                    "Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections))
 
+        self.logger.debug("Maximum absolute residual reduced from %e to %e" % (rmax_ref, rmax))
+        self.logger.debug("Residual norm reduced from %e to %e" % (rnorm_ref, rnorm))
         self.logger.debug("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
 
@@ -126,6 +138,7 @@ class IncrementalSolver:
     """
     The IncrementalSolver solves a given system of nonlinear equations by pseudo-time stepping.
     """
+
     def __init__(self, solution_method: IterativeSolver,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000) -> None:
@@ -156,17 +169,17 @@ class IncrementalSolver:
         self.logger.debug("Invoking incremental solver")
 
         # Note: it is assumed the starting guess is an equilibrium point!
-        equilibrium_solutions = [p] # adds initial point to equilibrium solutions
+        equilibrium_solutions = [p]  # adds initial point to equilibrium solutions
 
-        incremental_counter = 0 # counts total number of increments
-        iterative_counter = 0 # counts total number of iterates (cumulative throughout increments)
-        tries_storage = [] # stores the attempted states of equilibrium (multiple per increment)
+        incremental_counter = 0  # counts total number of increments
+        iterative_counter = 0  # counts total number of iterates (cumulative throughout increments)
+        tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
         try:
             # currently very simple termination criteria (load proportionality parameter termination criteria)
             # ideally terminated at p.y == 1.0
-            while p.y <= 1.0:
-                incremental_counter += 1 # increase incremental counter
+            while -1.0 < p.y < 1.0:
+                incremental_counter += 1
 
                 # invoke solution method to find incremental state
                 try:
@@ -174,26 +187,30 @@ class IncrementalSolver:
                 except (DiscriminantError, CounterError) as error:
                     self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
 
-                p = p + dp # add incremental state to current state (if equilibrium found)
+                p = p + dp  # add incremental state to current state (if equilibrium found)
 
-                self.logger.debug("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
+                self.logger.debug(
+                    "New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
 
-                iterative_counter += iterates # add iterates of current search to counter
-                tries_storage.append(tries) # store tries of current increment to storage
+                iterative_counter += iterates  # add iterates of current search to counter
+                tries_storage.append(tries)  # store tries of current increment to storage
 
-                equilibrium_solutions.append(p) # append equilibrium solution to storage
+                equilibrium_solutions.append(p)  # append equilibrium solution to storage
 
                 # terminate algorithm if too many increments are used
-                if incremental_counter > self.maximum_increments:
-                    raise CounterError("Maximum number of increments %2d > %2d" % (incremental_counter, self.maximum_increments))
+                if incremental_counter >= self.maximum_increments:
+                    raise CounterError(
+                        "Maximum number of increments %2d >= %2d" % (incremental_counter, self.maximum_increments))
 
         except CounterError as error:
             self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
+            return equilibrium_solutions, tries_storage
 
         self.logger.info("Total number of increments: %d" % incremental_counter)
         self.logger.info("Total number of iterates: %d" % iterative_counter)
 
         return equilibrium_solutions, tries_storage
+
 
 class CustomFormatter(logging.Formatter):
     white = '\x1b[5m'
