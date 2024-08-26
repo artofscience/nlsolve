@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import sys
 
 import numpy as np
 
@@ -7,12 +8,15 @@ from constraints import Constraint, Point, Structure, DiscriminantError
 class CounterError(Exception):
     pass
 
+import logging
+
 class IterativeSolver:
     """
     The IterativeSolver is the core of this API, its function is to find a next equilibrium point,
     that is solving the provided system of nonlinear equations given some constraint function.
     """
-    def __init__(self, nlf: Structure, constraint: Constraint) -> None:
+    def __init__(self, nlf: Structure, constraint: Constraint,
+                 name: str = "IterativeSolver", logging_level: int = logging.DEBUG) -> None:
         """
         Initialization of the iterative solver.
 
@@ -26,10 +30,13 @@ class IterativeSolver:
         self.constraint: Constraint = constraint # constraint function used (operates on nlf)
         self.maximum_iterates: int = 1000 # maximum allowed number of iterates before premature termination
 
-    def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
-        print("Invoking iterative solver")
+        self.__name__ = name
 
-        successful_termination = True # initialize termination to be successful
+        self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
+
+    def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
+        self.logger.debug("Invoking iterative solver")
 
         p = sol[-1] # takes the initial equilibrium point (what if this is not in equilibrium?)
         tries = [p] # initialize storage for attempted states and add initial point
@@ -54,6 +61,8 @@ class IterativeSolver:
         # note it has access to previous equilibrium points (sol) and dp = 0
         # note for first iterate dy = ddy and dp = ddp
         ddy = self.constraint.predictor(self.nlf, p, sol, ddx)
+        self.logger.debug("Predictor 0: ddy = %+f" % ddy)
+
         dp = self.nlf.ddp(p, ddx, ddy) # calculate prediction based on iterative load parameter
 
         #endregion
@@ -76,11 +85,12 @@ class IterativeSolver:
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
             try:
-                y = self.constraint.corrector(self.nlf, p, dp, ddx)
+                ddy = self.constraint.corrector(self.nlf, p, dp, ddx)
+                self.logger.debug("Corrector %d: ddy = %+f" % (iterative_counter, ddy))
             except DiscriminantError:
                 raise DiscriminantError
 
-            dp += self.nlf.ddp(p + dp, ddx, y) # calculate correction based on iterative load parameter and update incremental state
+            dp += self.nlf.ddp(p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
 
             #endregion
 
@@ -92,9 +102,7 @@ class IterativeSolver:
             if iterative_counter > self.maximum_iterates:
                 raise CounterError("Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_iterates))
 
-        print("Algorithm succesfully terminated") if successful_termination else print("Algorithm unsuccesfully terminated")
-
-        print("Number of corrections: %d" % iterative_counter)
+        self.logger.debug("Number of corrections: %d" % iterative_counter)
         return dp, iterative_counter, tries
 
     def get_r(self, p):
@@ -117,7 +125,8 @@ class IncrementalSolver:
     """
     The IncrementalSolver solves a given system of nonlinear equations by pseudo-time stepping.
     """
-    def __init__(self, solution_method: IterativeSolver) -> None:
+    def __init__(self, solution_method: IterativeSolver,
+                 name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG) -> None:
         """
         Initialization of the incremental solver.
 
@@ -129,6 +138,11 @@ class IncrementalSolver:
         self.solution_method = solution_method
         self.maximum_increments = 100
 
+        self.__name__ = name
+
+        self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
+
     def __call__(self, p: Point) -> Tuple[List[Point], List[List[Point]]]:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
@@ -137,8 +151,7 @@ class IncrementalSolver:
         :param p: initial equilibrium state
         :return: a list of equilibrium solutions (Points), and a list of lists of attempted points
         """
-
-        print("Invoking incremental solver")
+        self.logger.debug("Invoking incremental solver")
 
         # Note: it is assumed the starting guess is an equilibrium point!
         equilibrium_solutions = [p] # adds initial point to equilibrium solutions
@@ -157,11 +170,11 @@ class IncrementalSolver:
                 try:
                     dp, iterates, tries = self.solution_method(equilibrium_solutions)
                 except (DiscriminantError, CounterError) as error:
-                    print("{}: {}".format(type(error).__name__, error.args[0]))
+                    self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
 
                 p = p + dp # add incremental state to current state (if equilibrium found)
 
-                print("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
+                self.logger.debug("New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (dp.y, iterates, p.y))
 
                 iterative_counter += iterates # add iterates of current search to counter
                 tries_storage.append(tries) # store tries of current increment to storage
@@ -173,9 +186,49 @@ class IncrementalSolver:
                     raise CounterError("Maximum number of increments %2d > %2d" % (incremental_counter, self.maximum_increments))
 
         except CounterError as error:
-            print("{}: {}".format(type(error).__name__, error.args[0]))
+            self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
 
-        print("Total number of increments: %d" % incremental_counter)
-        print("Total number of iterates: %d" % iterative_counter)
+        self.logger.info("Total number of increments: %d" % incremental_counter)
+        self.logger.info("Total number of iterates: %d" % iterative_counter)
 
         return equilibrium_solutions, tries_storage
+
+class CustomFormatter(logging.Formatter):
+    white = '\x1b[5m'
+    green = '\x1b[92m'
+    grey = '\x1b[38;21m'
+    blue = '\x1b[38;5;39m'
+    yellow = '\x1b[38;5;226m'
+    red = '\u001b[31m'
+    bold_red = '\x1b[31;1m'
+    reset = '\x1b[0m'
+    format = "%(name)-6s %(levelname)-8s %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: green + format + reset,
+        logging.INFO: white + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+
+def create_logger(name, logging_level, formatter: logging.Formatter = None):
+    # formatter
+    formatter = formatter if formatter is not None else logging.Formatter('%(levelname)s: %(name)s - %(message)s')
+
+    # handler
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    # logger
+    logger = logging.getLogger(name)
+    logger.addHandler(handler)
+    logger.setLevel(logging_level)
+    logger.propagate = False
+    return logger

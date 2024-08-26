@@ -1,4 +1,5 @@
 from math import pi, sin
+import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -65,152 +66,155 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
 
 if __name__ == "__main__":
 
-    print("Load-based NR")
-    solution_method1 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphson())
-    solver1 = IncrementalSolver(solution_method1)
-    solution1, tries1 = solver1(Point(uf=np.zeros(2), ff=np.zeros(2)))
-
-    for a in tries1:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-    b = [-i.ff[1] for i in solution1]
-    a = [i.uf[1] for i in solution1]
-    c = [i.uf[0] for i in solution1]
-    plt.plot(a, b, 'ro', alpha=0.5)
-    plt.plot(c, b, 'ro', alpha=0.5)
-    for i in solution1:
-        plt.axhline(y=i.y, color='r')
-
-    print("Motion-based NR")
-    solution_method3 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphson())
-    solver3 = IncrementalSolver(solution_method3)
-    solution3, tries3 = solver3(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
-
-    for a in tries3:
-        plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-
-    plt.plot([i.up for i in solution3], [-i.fp for i in solution3], 'bo', alpha=0.5)
-    plt.plot([i.uf for i in solution3], [-i.fp for i in solution3], 'bo', alpha=0.5)
-
-    for i in solution3:
-        plt.axvline(x=i.up, color='b')
-
-    print("Load-based ARC")
-    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), ArcLength())
-    solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
-
-    for a in tries2:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-
-    b = [-i.ff[1] for i in solution2]
-    a = [i.uf[1] for i in solution2]
-    c = [i.uf[0] for i in solution2]
-
-    plt.plot(a, b, 'go', alpha=0.5)
-    plt.plot(c, b, 'go', alpha=0.5)
-
-    print("Motion-based ARC")
-    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), ArcLength())
-    solver4 = IncrementalSolver(solution_method4)
-    solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
-
-    for a in tries4:
-        plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-
-    a = [i.up for i in solution4]
-    c = [i.uf for i in solution4]
-
-    b = [-i.fp for i in solution4]
-    plt.plot(a, b, 'co', alpha=0.5)
-    plt.plot(c, [-i.fp for i in solution4], 'co', alpha=0.5)
-
-    print("Load-based ARC2")
-    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphsonByArcLength())
-    solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
-
-    for a in tries2:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-
-    b = [-i.ff[1] for i in solution2]
-    a = [i.uf[1] for i in solution2]
-    c = [i.uf[0] for i in solution2]
-
-    plt.plot(a, b, 'go', alpha=0.5)
-    plt.plot(c, b, 'go', alpha=0.5)
-
-    print("Motion-based ARC2")
-    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphsonByArcLength())
-    solver4 = IncrementalSolver(solution_method4)
-    solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
-
-    for a in tries4:
-        plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-
-    a = [i.up for i in solution4]
-    c = [i.uf for i in solution4]
-
-    b = [-i.fp for i in solution4]
-    plt.plot(a, b, 'ko', alpha=0.5)
-    plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
-
-    print("Load-based GENERAL a0")
-    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=0.0))
-    solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
-
-    for a in tries2:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-
-    b = [-i.ff[1] for i in solution2]
-    a = [i.uf[1] for i in solution2]
-    c = [i.uf[0] for i in solution2]
-
-    plt.plot(a, b, 'go', alpha=0.5)
-    plt.plot(c, b, 'go', alpha=0.5)
-
-    print("Motion-based GENERAL a0")
-    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), GeneralizedArcLength(alpha=0.0))
-    solver4 = IncrementalSolver(solution_method4)
-    solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
-
-    for a in tries4:
-        plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-
-    a = [i.up for i in solution4]
-    c = [i.uf for i in solution4]
-
-    b = [-i.fp for i in solution4]
-    plt.plot(a, b, 'ko', alpha=0.5)
-    plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
-
-    print("Load-based GENERAL a1")
-    solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=1.0))
-    solver2 = IncrementalSolver(solution_method2)
-    solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
-
-    for a in tries2:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-
-    b = [-i.ff[1] for i in solution2]
-    a = [i.uf[1] for i in solution2]
-    c = [i.uf[0] for i in solution2]
-
-    plt.plot(a, b, 'go', alpha=0.5)
-    plt.plot(c, b, 'go', alpha=0.5)
+    # print("Load-based NR")
+    # solution_method1 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphson())
+    # solver1 = IncrementalSolver(solution_method1)
+    # solution1, tries1 = solver1(Point(uf=np.zeros(2), ff=np.zeros(2)))
+    #
+    # for a in tries1:
+    #     plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    # b = [-i.ff[1] for i in solution1]
+    # a = [i.uf[1] for i in solution1]
+    # c = [i.uf[0] for i in solution1]
+    # plt.plot(a, b, 'ro', alpha=0.5)
+    # plt.plot(c, b, 'ro', alpha=0.5)
+    # for i in solution1:
+    #     plt.axhline(y=i.y, color='r')
+    #
+    # print("Motion-based NR")
+    # solution_method3 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphson())
+    # solver3 = IncrementalSolver(solution_method3)
+    # solution3, tries3 = solver3(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
+    #
+    # for a in tries3:
+    #     plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #
+    # plt.plot([i.up for i in solution3], [-i.fp for i in solution3], 'bo', alpha=0.5)
+    # plt.plot([i.uf for i in solution3], [-i.fp for i in solution3], 'bo', alpha=0.5)
+    #
+    # for i in solution3:
+    #     plt.axvline(x=i.up, color='b')
+    #
+    # print("Load-based ARC")
+    # solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), ArcLength())
+    # solver2 = IncrementalSolver(solution_method2)
+    # solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
+    #
+    # for a in tries2:
+    #     plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #
+    # b = [-i.ff[1] for i in solution2]
+    # a = [i.uf[1] for i in solution2]
+    # c = [i.uf[0] for i in solution2]
+    #
+    # plt.plot(a, b, 'go', alpha=0.5)
+    # plt.plot(c, b, 'go', alpha=0.5)
+    #
+    # print("Motion-based ARC")
+    # solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), ArcLength())
+    # solver4 = IncrementalSolver(solution_method4)
+    # solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
+    #
+    # for a in tries4:
+    #     plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #
+    # a = [i.up for i in solution4]
+    # c = [i.uf for i in solution4]
+    #
+    # b = [-i.fp for i in solution4]
+    # plt.plot(a, b, 'co', alpha=0.5)
+    # plt.plot(c, [-i.fp for i in solution4], 'co', alpha=0.5)
+    #
+    # print("Load-based ARC2")
+    # solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), NewtonRaphsonByArcLength())
+    # solver2 = IncrementalSolver(solution_method2)
+    # solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
+    #
+    # for a in tries2:
+    #     plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #
+    # b = [-i.ff[1] for i in solution2]
+    # a = [i.uf[1] for i in solution2]
+    # c = [i.uf[0] for i in solution2]
+    #
+    # plt.plot(a, b, 'go', alpha=0.5)
+    # plt.plot(c, b, 'go', alpha=0.5)
+    #
+    # print("Motion-based ARC2")
+    # solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), NewtonRaphsonByArcLength())
+    # solver4 = IncrementalSolver(solution_method4)
+    # solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
+    #
+    # for a in tries4:
+    #     plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #
+    # a = [i.up for i in solution4]
+    # c = [i.uf for i in solution4]
+    #
+    # b = [-i.fp for i in solution4]
+    # plt.plot(a, b, 'ko', alpha=0.5)
+    # plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
+    #
+    # print("Load-based GENERAL a0")
+    # solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=0.0))
+    # solver2 = IncrementalSolver(solution_method2)
+    # solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
+    #
+    # for a in tries2:
+    #     plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #
+    # b = [-i.ff[1] for i in solution2]
+    # a = [i.uf[1] for i in solution2]
+    # c = [i.uf[0] for i in solution2]
+    #
+    # plt.plot(a, b, 'go', alpha=0.5)
+    # plt.plot(c, b, 'go', alpha=0.5)
+    #
+    # print("Motion-based GENERAL a0")
+    # solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), GeneralizedArcLength(alpha=0.0))
+    # solver4 = IncrementalSolver(solution_method4)
+    # solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
+    #
+    # for a in tries4:
+    #     plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+    #
+    # a = [i.up for i in solution4]
+    # c = [i.uf for i in solution4]
+    #
+    # b = [-i.fp for i in solution4]
+    # plt.plot(a, b, 'ko', alpha=0.5)
+    # plt.plot(c, [-i.fp for i in solution4], 'ko', alpha=0.5)
+    #
+    # print("Load-based GENERAL a1")
+    # solution_method2 = IterativeSolver(InvolvedTrussProblemLoadBased(), GeneralizedArcLength(alpha=1.0))
+    # solver2 = IncrementalSolver(solution_method2)
+    # solution2, tries2 = solver2(Point(uf=np.zeros(2), ff=np.zeros(2)))
+    #
+    # for a in tries2:
+    #     plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #     plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+    #
+    # b = [-i.ff[1] for i in solution2]
+    # a = [i.uf[1] for i in solution2]
+    # c = [i.uf[0] for i in solution2]
+    #
+    # plt.plot(a, b, 'go', alpha=0.5)
+    # plt.plot(c, b, 'go', alpha=0.5)
 
     print("Motion-based GENERAL a1")
-    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(), GeneralizedArcLength(alpha=1.0))
-    solver4 = IncrementalSolver(solution_method4)
+    solution_method4 = IterativeSolver(InvolvedTrussProblemMotionBased(),
+                                       GeneralizedArcLength(dl=1.0, alpha=1.0),
+                                       logging_level=logging.DEBUG)
+    solver4 = IncrementalSolver(solution_method4,
+                                logging_level=logging.DEBUG)
     solution4, tries4 = solver4(Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1)))
 
     for a in tries4:
