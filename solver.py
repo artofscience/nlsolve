@@ -42,7 +42,7 @@ class IterativeSolver:
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
     def __call__(self, sol: List[Point]) -> Tuple[Point, int, List[Point]]:
-        self.logger.debug("Invoking iterative solver")
+        self.logger.debug("Starting iterative solver")
 
         p = sol[-1]  # takes the initial equilibrium point (what if this is not in equilibrium?)
         tries = [p]  # initialize storage for attempted states and add initial point
@@ -60,8 +60,8 @@ class IterativeSolver:
         # note: for predictor ddx0 = 0, hence only a single rhs for this solve
         if self.nlf.nf:
             load = 1.0 * self.nlf.ff
-            load += self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0  # adds to rhs if nonzero prescribed dof
-            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), -load)
+            load -= self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0  # adds to rhs if nonzero prescribed dof
+            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), load)
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
@@ -80,7 +80,7 @@ class IterativeSolver:
         rmax_ref = np.amax(np.abs(r))
 
         # make corrections until termination criteria are met
-        while (rmax := np.amax(np.abs(r))) > 1e-3 or (rnorm := np.linalg.norm(r)) > 1e-3 or rnorm > 1e-1 * rnorm_ref:
+        while (rmax := np.amax(np.abs(r))) > 1e-9 or (rnorm := np.linalg.norm(r)) > 1e-6:
 
             iterative_counter += 1  # increase iterative solver counter
 
@@ -89,8 +89,8 @@ class IterativeSolver:
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.nlf.nf:
                 load = 1.0 * self.nlf.ff
-                load += self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
-                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), -np.array([self.nlf.rf(p + dp), load]).T)
+                load -= self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
+                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), np.array([-self.nlf.rf(p + dp), load]).T)
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
@@ -183,6 +183,7 @@ class IncrementalSolver:
 
                 # invoke solution method to find incremental state
                 try:
+                    self.logger.info("Invoking iterative solver")
                     dp, iterates, tries = self.solution_method(equilibrium_solutions)
                 except (DiscriminantError, CounterError) as error:
                     self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))

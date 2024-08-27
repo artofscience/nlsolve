@@ -24,7 +24,7 @@ class InvolvedTrussProblem(Structure):
 class InvolvedTrussProblemLoadBased(InvolvedTrussProblem):
 
     def ff(self):
-        return np.array([0, -0.5], dtype=float)
+        return np.array([0, 1.0], dtype=float)
 
     def internal_load_free(self, p):
         return super().internal_load(p.uf[0], p.uf[1])

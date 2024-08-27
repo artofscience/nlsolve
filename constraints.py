@@ -113,12 +113,12 @@ class ArcLength(Constraint):
             a[1] += 2 * np.dot(nlf.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
             tmpa = nlf.kpp(p + dp) @ nlf.up
-            tmpc = dp.fp - nlf.rp(p + dp)
+            tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
-                tmpc -= nlf.kpf(p + dp) @ u[:, 0]
+                tmpc += nlf.kpf(p + dp) @ u[:, 0]
             a[0] += self.beta ** 2 * np.dot(tmpa, tmpa)
-            a[1] -= 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
+            a[1] += 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.beta ** 2 * np.dot(tmpc, tmpc)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -238,12 +238,12 @@ class GeneralizedArcLength(ArcLength):
             a[1] += 2 * np.dot(nlf.up, dp.up)
             a[2] += np.dot(dp.up, dp.up)
             tmpa = nlf.kpp(p + dp) @ nlf.up
-            tmpc = dp.fp - nlf.rp(p + dp)
+            tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
-                tmpc -= nlf.kpf(p + dp) @ u[:, 0]
+                tmpc += nlf.kpf(p + dp) @ u[:, 0]
             a[0] += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa)
-            a[1] -= self.alpha * 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
+            a[1] += self.alpha * 2 * self.beta ** 2 * np.dot(tmpa, tmpc)
             a[2] += self.alpha * self.beta ** 2 * np.dot(tmpc, tmpc)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -316,7 +316,7 @@ class Structure(ABC):
         """
 
         # free residual is defined as the free internal load PLUS the proportional loading parameter times the applied external load
-        return self.internal_load_free(p) + p.y * self.ff
+        return self.internal_load_free(p) - p.y * self.ff
 
     def rp(self, p: Point) -> State:
         """
@@ -327,7 +327,7 @@ class Structure(ABC):
         """
 
         # prescribed residual is defined as the prescribed internal load PLUS the reaction load
-        return self.internal_load_prescribed(p) + p.fp
+        return self.internal_load_prescribed(p) - p.fp
 
     def kff(self, p: Point) -> State:
         """
@@ -381,8 +381,8 @@ class Structure(ABC):
             ddff = y * self.ff
         if self.np:
             ddup = y * self.up
-            ddfp = -self.rp(p) - y * self.kpp(p) @ self.up
-            ddfp -= self.kpf(p) @ dduf if self.nf else 0.0
+            ddfp = self.rp(p) + y * self.kpp(p) @ self.up
+            ddfp += self.kpf(p) @ dduf if self.nf else 0.0
 
         return Point(dduf, ddup, ddff, ddfp, y)
 

@@ -22,7 +22,7 @@ for constraint in constraints:
         constraint,
         maximum_corrections=100,
         name="IterativeSolver "+name,
-        logging_level=logging.INFO)
+        logging_level=logging.DEBUG)
 
     solver = IncrementalSolver(
         solution_method,
@@ -33,11 +33,11 @@ for constraint in constraints:
     solution, tries = solver(initial_point)
 
     for a in tries:
-        plt.plot([i.up for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [-i.fp for i in a], 'ko', alpha=0.1)
+        plt.plot([i.up for i in a], [i.fp for i in a], 'ko', alpha=0.1)
+        plt.plot([i.uf for i in a], [i.fp for i in a], 'ko', alpha=0.1)
 
-    plt.plot([i.up for i in solution], [-i.fp for i in solution], 'o', alpha=0.5)
-    plt.plot([i.uf for i in solution], [-i.fp for i in solution], 'o', alpha=0.5)
+    plt.plot([i.up for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
+    plt.plot([i.uf for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
 
     if constraint.__class__.__name__ == "NewtonRaphson":
         for i in solution:

@@ -7,8 +7,8 @@ import logging
 
 constraints = [NewtonRaphson(), NewtonRaphsonByArcLength(), GeneralizedArcLength(alpha=0), ArcLength(), GeneralizedArcLength(alpha=1)]
 
-plt.gca().set_xlim([-0.5, 4.5])
-plt.gca().set_ylim([-0.7, 0.7])
+plt.gca().set_xlim([-0.5, 6.5])
+plt.gca().set_ylim([-1.0, 1.2])
 plt.gca().set_aspect('equal')
 plt.ion()
 plt.show()
@@ -21,7 +21,7 @@ for constraint in constraints:
         constraint,
         maximum_corrections=100,
         name="IterativeSolver "+name,
-        logging_level=logging.INFO)
+        logging_level=logging.DEBUG)
 
     solver = IncrementalSolver(
         solution_method,
@@ -32,10 +32,10 @@ for constraint in constraints:
     solution, tries = solver(initial_point)
 
     for a in tries:
-        plt.plot([i.uf[1] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [-i.ff[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.uf[1] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.uf[0] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
 
-    external_load = [-i.ff[1] for i in solution]
+    external_load = [i.ff[1] for i in solution]
     free_motion_dof1 = [i.uf[1] for i in solution]
     free_motion_dof0 = [i.uf[0] for i in solution]
     plt.plot(free_motion_dof0, external_load, 'o', alpha=0.5)
@@ -43,7 +43,7 @@ for constraint in constraints:
 
     if constraint.__class__.__name__ == "NewtonRaphson":
         for i in solution:
-            plt.axhline(-i.ff[1])
+            plt.axhline(i.ff[1])
 
     plt.draw()
     print("Pause...")
