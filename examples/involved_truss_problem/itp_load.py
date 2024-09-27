@@ -1,7 +1,7 @@
 from involved_truss_problem import InvolvedTrussProblemLoadBased
 import numpy as np
-from constraints import Point, NewtonRaphson, ArcLength, GeneralizedArcLength, NewtonRaphsonByArcLength
-from solver import IncrementalSolver, IterativeSolver
+from constraints import NewtonRaphson, ArcLength, GeneralizedArcLength, NewtonRaphsonByArcLength
+from core import IncrementalSolver, IterativeSolver, Point
 from matplotlib import pyplot as plt
 import logging
 

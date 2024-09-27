@@ -3,8 +3,8 @@ from math import pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import NewtonRaphson, ArcLength, Structure, Point
-from solver import IncrementalSolver, IterativeSolver
+from constraints import NewtonRaphson, ArcLength
+from core import IncrementalSolver, IterativeSolver, Structure, Point
 
 
 class TrussProblem(Structure):
