@@ -6,7 +6,10 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 
-from core import Structure, Point
+from utils import Structure, Point
+
+from logger import CustomFormatter, create_logger
+import logging
 
 State = np.ndarray[float] | None
 
@@ -14,7 +17,7 @@ class DiscriminantError(Exception):
     pass
 
 class Constraint(ABC):
-    def __init__(self, dl: float = 0.1) -> None:
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG) -> None:
         """
         Initialization of the constraint function used to solve the system of nonlinear equations.
 
@@ -23,6 +26,11 @@ class Constraint(ABC):
 
         # some aliases for commonly used functions
         self.dl: float = dl # characteristic magnitude of constraint function (e.g. arc-length)
+
+        self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
+
+        self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
     @property
     def dl(self) -> float:
@@ -76,8 +84,8 @@ class NewtonRaphson(Constraint):
 
 
 class ArcLength(Constraint):
-    def __init__(self, dl: float = 0.1, beta: float = 1.0) -> None:
-        super().__init__(dl)
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0) -> None:
+        super().__init__(dl, name, logging_level)
         self.beta = beta
 
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
@@ -204,8 +212,8 @@ class NewtonRaphsonByArcLength(ArcLength):
 
 
 class GeneralizedArcLength(ArcLength):
-    def __init__(self, dl: float = 0.1, alpha: float = 1.0, beta: float = 1.0) -> None:
-        super().__init__(dl, beta)
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, alpha: float = 1.0, beta: float = 1.0) -> None:
+        super().__init__(dl, name, logging_level, beta)
         self.alpha = alpha
 
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
@@ -214,8 +222,12 @@ class GeneralizedArcLength(ArcLength):
         return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
 
     def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+        try:
+            y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        except ValueError as error:
+            self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+            raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
-        y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
 
