@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 
 from constraints import State, NewtonRaphson
-from core import IterativeSolver, Structure, Point
+from core import IterativeSolver
+from utils import Structure, Point
 
 
 class Spring1D(Structure):

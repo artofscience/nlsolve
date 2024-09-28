@@ -4,7 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from constraints import NewtonRaphson, ArcLength
-from core import IncrementalSolver, IterativeSolver, Structure, Point
+from core import IncrementalSolver, IterativeSolver
+from utils import Structure, Point
 
 
 class TrussProblem(Structure):

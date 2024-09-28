@@ -2,7 +2,7 @@ from math import pi, sin
 
 import numpy as np
 
-from core import Structure
+from utils import Structure
 
 
 class InvolvedTrussProblem(Structure):
