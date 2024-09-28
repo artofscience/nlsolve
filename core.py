@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import sys
-from abc import ABC
-from copy import deepcopy
 from typing import List, Tuple
+
+from constraints import Constraint, NewtonRaphson
 from controllers import Controller
 
 import numpy as np
+
+from logger import CustomFormatter, create_logger
+from utils import Structure, Point
 
 State = np.ndarray[float] | None
 
@@ -23,7 +25,7 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
 
-    def __init__(self, nlf: Structure, constraint,
+    def __init__(self, nlf: Structure, constraint: Constraint = None,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
         """
@@ -36,7 +38,7 @@ class IterativeSolver:
 
         # create some aliases for commonly used functions
         self.nlf: Structure = nlf  # nonlinear system of equations
-        self.constraint = constraint  # constraint function used (operates on nlf)
+        self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
         self.residual_norm_tolerance: float = 1e-3
 
@@ -72,7 +74,12 @@ class IterativeSolver:
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
         # note for first iterate dy = ddy and dp = ddp
-        ddy = self.constraint.predictor(self.nlf, p, sol, ddx)
+        try:
+            ddy = self.constraint.predictor(self.nlf, p, sol, ddx)
+        except ValueError as error:
+            self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+            raise ValueError("A suitable prediction cannot be found!", 0)
+
         self.logger.debug("Predictor 0: ddy = %+f" % ddy)
 
         dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
@@ -100,7 +107,12 @@ class IterativeSolver:
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
-            ddy = self.constraint.corrector(self.nlf, p, dp, ddx)
+            try:
+                ddy = self.constraint.corrector(self.nlf, p, dp, ddx)
+            except ValueError as error:
+                self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+                raise ValueError("A suitable correction cannot be found!", iterative_counter + 1)
+
             self.logger.debug("Corrector %d: ddy = %+e" % (iterative_counter, ddy))
 
             dp += self.nlf.ddp(p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
@@ -114,12 +126,12 @@ class IterativeSolver:
             # check if maximum number of corrections is not exceeded
             if iterative_counter > self.maximum_corrections:
                 raise CounterError(
-                    "Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections))
+                    "Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections), iterative_counter + 1)
 
         self.logger.debug("Maximum absolute residual reduced from %e to %e" % (rmax_ref, rmax))
         self.logger.debug("Residual norm reduced from %e to %e" % (rnorm_ref, rnorm))
         self.logger.debug("Number of corrections: %d" % iterative_counter)
-        return dp, iterative_counter, tries
+        return dp, iterative_counter + 1, tries
 
     def get_r(self, p):
         """
@@ -164,7 +176,7 @@ class IncrementalSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
-    def __call__(self, p: Point, controller: Controller = Controller(0.1)) -> Tuple[List[Point], List[List[Point]]]:
+    def __call__(self, p: Point, controller: Controller = None) -> Tuple[List[Point], List[List[Point]]]:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -173,13 +185,18 @@ class IncrementalSolver:
         :param controller: controller of the pseud-time step size
         :return: a list of equilibrium solutions (Points), and a list of lists of attempted points
         """
+        controller = controller if controller is not None else Controller(0.1)
+
         self.logger.debug("Invoking incremental solver")
 
         # Note: it is assumed the starting guess is an equilibrium point!
         equilibrium_solutions = [p]  # adds initial point to equilibrium solutions
 
-        incremental_counter = 0  # counts total number of increments
+        incremental_counter = 0  # counts total number of succesful increments
+        incremental_tries = 0  # counts total number of times the iterative solver is invoked
         iterative_counter = 0  # counts total number of iterates (cumulative throughout increments)
+        iterative_tries = 0  # counts total number of iterates (cumulative throughout increments)
+
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
         try:
@@ -188,14 +205,21 @@ class IncrementalSolver:
             while -1.0 < p.y < 1.0:
                 incremental_counter += 1
 
+                print("")
+
                 # invoke solution method to find incremental state
                 while True:
                     try:
-                        self.logger.info("Invoking iterative solver")
+                        incremental_tries += 1
+                        self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
                         dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
+                        iterative_tries += iterates
                         break
                     except (ValueError, CounterError) as error:
-                        self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
+                        self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+                        iterative_tries += error.args[1]
+                        self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
+                        self.logger.warning("Decrease characteristic length of constraint equation and try again!")
                         controller.decrease() # decrease the characteristic length of the constraint
 
                 p = p + dp  # add incremental state to current state (if equilibrium found)
@@ -211,6 +235,12 @@ class IncrementalSolver:
                 iterative_counter += iterates  # add iterates of current search to counter
                 tries_storage.append(tries)  # store tries of current increment to storage
 
+                self.logger.info("Total number of increments: %d" % incremental_tries)
+                self.logger.debug("Total number of iterates: %d" % iterative_tries)
+
+                self.logger.info("Total number of succesful increments: %d" % incremental_counter)
+                self.logger.debug("Total number of effective iterates: %d" % iterative_counter)
+
                 # terminate algorithm if too many increments are used
                 if incremental_counter >= self.maximum_increments:
                     raise CounterError(
@@ -220,254 +250,6 @@ class IncrementalSolver:
             self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
             return equilibrium_solutions, tries_storage
 
-        self.logger.info("Total number of increments: %d" % incremental_counter)
-        self.logger.info("Total number of iterates: %d" % iterative_counter)
-
         return equilibrium_solutions, tries_storage
 
 
-class CustomFormatter(logging.Formatter):
-    white = '\x1b[5m'
-    green = '\x1b[92m'
-    grey = '\x1b[38;21m'
-    blue = '\x1b[38;5;39m'
-    yellow = '\x1b[38;5;226m'
-    red = '\u001b[31m'
-    bold_red = '\x1b[31;1m'
-    reset = '\x1b[0m'
-    format = "%(name)-6s %(levelname)-8s %(message)s"
-
-    FORMATS = {
-        logging.DEBUG: green + format + reset,
-        logging.INFO: white + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
-
-
-def create_logger(name, logging_level, formatter: logging.Formatter = None):
-    # formatter
-    formatter = formatter if formatter is not None else logging.Formatter('%(levelname)s: %(name)s - %(message)s')
-
-    # handler
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-
-    # logger
-    logger = logging.getLogger(name)
-    logger.addHandler(handler)
-    logger.setLevel(logging_level)
-    logger.propagate = False
-    return logger
-
-
-class Structure(ABC):
-    """
-    Interface of a nonlinear function to the nonlinear solver.
-
-    The external / internal / residual load, motion and stiffness matrix are partitioned based on the free and prescribed degrees of freedom.
-    Both the free and prescribed degrees of freedom can be of dimension 0, 1 or higher.
-    If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
-    That is, either external_load OR prescribed_motion OR BOTH are to be provided.
-    """
-    def __init__(self):
-        self.ff = self.ff()
-        self.up = self.up()
-
-        # get dimension of free and prescribed degrees of freedom
-        self.nf = np.shape(self.ff)[0] if self.ff is not None else None
-        self.np = np.shape(self.up)[0] if self.up is not None else None
-
-        # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ff, self.ff) if self.nf is not None else None
-        self.up2 = np.dot(self.up, self.up) if self.np is not None else None
-
-    def ff(self) -> State:
-        """
-        Applied external load.
-
-        :return: None
-        """
-        return None
-
-    def up(self) -> State:
-        """
-        Prescribed motion.
-
-        :return: None
-        """
-        return None
-
-    def internal_load_free(self, p: Point) -> State:
-        """
-        Internal load associated to the free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def internal_load_prescribed(self, p: Point) -> State:
-        """
-        Internal load associated to the prescribed degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def rf(self, p: Point) -> State:
-        """
-        Residual associated to the free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: residual associated to the free degrees of freedom
-        """
-
-        # free residual is defined as the free internal load PLUS the proportional loading parameter times the applied external load
-        return self.internal_load_free(p) - p.y * self.ff
-
-    def rp(self, p: Point) -> State:
-        """
-        Residual associated to the prescribed degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: residual associated to the prescribed degrees of freedom
-        """
-
-        # prescribed residual is defined as the prescribed internal load PLUS the reaction load
-        return self.internal_load_prescribed(p) - p.fp
-
-    def kff(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the free-free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def kfp(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the free-prescribed degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def kpf(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the prescribed-free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def kpp(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the prescribed-prescribed degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def ddp(self, p: Point, u: np.ndarray, y: float) -> Point:
-        """
-        Provides the iterative updated state given some iterative load parameter.
-
-        :param p: current state (p + dp)
-        :param u: resultants from solve
-        :param y: iterative load parameter
-        :return:
-        """
-        dduf, ddup, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
-
-        if self.nf:
-            dduf = u[:, 0] + y * u[:, 1]
-            ddff = y * self.ff
-        if self.np:
-            ddup = y * self.up
-            ddfp = self.rp(p) + y * self.kpp(p) @ self.up
-            ddfp += self.kpf(p) @ dduf if self.nf else 0.0
-
-        return Point(dduf, ddup, ddff, ddfp, y)
-
-
-class Point:
-    def __init__(self, uf: State = 0.0, up: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:
-        """
-        Initialize an (equilibrium) point given it's load and corresponding motion in partitioned format.
-
-        :param uf: free / unknown motion
-        :param up: prescribed motion
-        :param ff: external / applied load
-        :param fp: reaction load
-        :param y: load proportionality parameter
-        """
-        self.uf = uf
-        self.up = up
-        self.ff = ff
-        self.fp = fp
-        self.y = y
-
-    def __iadd__(self, other: Point) -> Point:
-        """
-        Adds the content of another Point to this Point.
-
-        :param other: another Point object
-        :return: sum of Points
-        """
-        self.uf += other.uf
-        self.up += other.up
-        self.ff += other.ff
-        self.fp += other.fp
-        self.y += other.y
-        return self
-
-    def __rmul__(self, other: Point) -> Point:
-        """
-        Multiplications of two point entries.
-
-        Note rmul makes a deepcopy of itself!
-
-        :param other: another Point
-        :return: a copy of itself with the entries multiplied by the other Points entries
-        """
-        out = deepcopy(self)
-        out.uf *= other
-        out.up *= other
-        out.ff *= other
-        out.fp *= other
-        out.y *= other
-        return out
-
-    def __add__(self, other: Point) -> Point:
-        """
-        Addition of two points, returing a third Point.
-
-        :param other: another Point object
-        :return: a third Point object that is the addition
-        """
-        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
-        out += other
-        return out
-
-    def __sub__(self, other: Point) -> Point:
-        """
-        Substraction of two points, returing a third Point.
-
-        :param other: another Point object
-        :return: a third Point object that is the substraction
-        """
-        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
-        out -= other
-        return out
