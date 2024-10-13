@@ -25,7 +25,7 @@ class InvolvedTrussProblemLoadBased(InvolvedTrussProblem):
     def ff(self):
         return np.array([0, 1.0], dtype=float)
 
-    def internal_load_free(self, p):
+    def gf(self, p):
         return super().internal_load(p.uf[0], p.uf[1])
 
     def kff(self, p):
@@ -39,10 +39,10 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
     def ff(self):
         return np.array([0.0])
 
-    def internal_load_prescribed(self, p):
+    def gp(self, p):
         return super().internal_load(p.uf, p.up)[1]
 
-    def internal_load_free(self, p):
+    def gf(self, p):
         return super().internal_load(p.uf, p.up)[0]
 
     def kff(self, p):

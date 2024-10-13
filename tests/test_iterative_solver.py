@@ -14,7 +14,7 @@ class Spring1D(Structure):
     def ff(self) -> State:
         return np.array([1.0], dtype=float)
 
-    def internal_load_free(self, p: Point) -> State:
+    def gf(self, p: Point) -> State:
         return self.k * p.uf
 
     def kff(self, p: Point) -> State:
@@ -40,7 +40,7 @@ class Spring2DLoad(Structure):
     def kff(self, p: Point) -> State:
         return np.array([[self.k[0] + self.k[1], -self.k[1]], [-self.k[1], self.k[1]]])
 
-    def internal_load_free(self, p: Point) -> State:
+    def gf(self, p: Point) -> State:
         return self.kff(p) @ p.uf
 
 
@@ -76,10 +76,10 @@ class Spring2DMotion(Structure):
     def kpf(self, p: Point) -> State:
         return self.kfp(p)
 
-    def internal_load_prescribed(self, p: Point) -> State:
+    def gp(self, p: Point) -> State:
         return self.kpf(p) @ p.uf + self.kpp(p) @ p.up
 
-    def internal_load_free(self, p: Point) -> State:
+    def gf(self, p: Point) -> State:
         return self.kff(p) @ p.uf + self.kfp(p) @ p.up
 
 

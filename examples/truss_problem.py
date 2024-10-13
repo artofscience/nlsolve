@@ -25,7 +25,7 @@ class TrussProblemLoadBased(TrussProblem):
     def ff(self):
         return np.array([-2.0], dtype=float)
 
-    def internal_load_free(self, p):
+    def gf(self, p):
         return super().internal_load(p.uf)
 
     def kff(self, p):
@@ -37,7 +37,7 @@ class TrussProblemMotionBased(TrussProblem):
     def up(self):
         return np.array([3.0], dtype=float)
 
-    def internal_load_prescribed(self, p):
+    def gp(self, p):
         return super().internal_load(p.up)
 
     def kpp(self, p):
