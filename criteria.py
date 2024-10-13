@@ -1,54 +1,49 @@
 """Abstract implementation for convergence criteria."""
-import abc
+from abc import ABC, abstractmethod
+from utils import Point, Structure
+import logging
 import operator
+from operator import lt
+
+from logger import CustomFormatter, create_logger
+from typing import Callable
 
 import numpy as np
 
+class CounterError(Exception):
+    pass
 
-class Criterion(abc.ABC):
-    """Abstract base class for a boolean (convergence) criterion.
+class Counter:
+    """Enforces a maximum number of iterations.
 
-    The criterion evaluates it current status upon conversion towards a boolean
-    value, i.e. when the ``__bool__`` function is invoked. This then evaluates
-    the ``__call__`` method, which should be provided by the user. Herein, the
-    ``self.done`` attribute should be set according to the current status of
-    the desired criterion.
+    This keeps track of an internal counter that increments on each evaluation
+    of ``__bool__``. Thus, when setting up a loop as follows, this criterion
+    will ensure at most 50 iterations are performed.
 
-    By invoking ``__call__`` on conversion to bool, it allows to write while
-    loops as follows:
-
-    >>> terminated = ObjectiveChange()
-    >>> while not terminated:
-    >>> ...
-
-    This base class also provides implementations for ``__and__`` and
-    ``__or__`` that allows for easy composition of various child classes of
-    ``Criterion``. These magic functions return an instance of ``Criteria``
-    that evaluates the corresponding ``and`` or ``or`` operation on the
-    combined criterion classes. For instance, to enforce either a combination
-    of objective change and feasibility, or a total number of iterations:
-
-    >>> objective_change = ObjectiveChange(tolerance=1e-4)
-    >>> feasibility = Feasibility(slack=1e-4)
-    >>> max_iter = IterationCount(500)
-    >>> terminated = (objective_change & feasibility) | max_iter
-
-    Finally, the base class implements ``__invert__``, such that the criteria
-    can be flipped. For instance, if you want at least a number of iterations
-    to be performed before convergence might be triggered:
-
-    >>> terminated = objective_change & feasibility & ~max_iter
-
+    >>> terminated = Counter(50):
+    >>> while not terminated
     """
 
-    def __init__(self):
-        """On initialisation the criterion is set to False."""
-        self.done = False
+    def __init__(self, threshold: int = 50):
+        self.count = 0
+        self.threshold = threshold
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """Evaluates its criterion function and updates it status."""
-        self.__call__()
-        return self.done
+        self.count += 1
+        return self.count > self.threshold
+
+
+class Criterion(ABC):
+    def __init__(self, name: str = None, logging_level: int = logging.INFO) -> None:
+
+        self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
+        self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
+
+    @abstractmethod
+    def __call__(self, problem: Structure, p: Point) -> bool:
+        pass
 
     def __and__(self, other):
         """Return a combined ``Criteria`` from the ``and (&)`` operation."""
@@ -67,12 +62,6 @@ class Criterion(abc.ABC):
         """
         return Criteria(self, lambda: True, operator.__ne__)
 
-    @abc.abstractmethod
-    def __call__(self):
-        """User provided function to set the converged statue: ``self.done``"""
-        ...
-
-
 class Criteria(Criterion):
     """A boolean combination of two ``Criterion`` instances.
 
@@ -82,74 +71,37 @@ class Criteria(Criterion):
     (sub)classes from ``Criterion``.
     """
 
-    def __init__(self, left, right, op):
-        super().__init__()
+    def __init__(self, left, right, op,
+                 name: str = None, logging_level: int = logging.INFO):
+        super().__init__(name, logging_level)
         self.left, self.right = left, right
         self.operator = op
 
-    def __call__(self):
+    def __call__(self, problem: Structure, p: Point) -> bool:
         """Ensure both criteria are called when called."""
-        self.left()
-        self.right()
+        a = self.operator(bool(self.left(problem, p)), bool(self.right(problem, p)))
+        if a:
+            self.logger.info("Convergence criteria satisfied")
+        return a
 
-    def __bool__(self):
-        """Overloads ``bool`` to combine both criteria."""
-        return self.operator(bool(self.left), bool(self.right))
-
-
-class Counter(Criterion):
-    """Enforces a maximum number of iterations.
-
-    This keeps track of an internal counter that increments on each evaluation
-    of ``__call__``. Thus, when setting up a loop as follows, this criterion
-    will ensure at most 50 iterations are performed.
-
-    >>> terminated = Counter(50):
-    >>> while not terminated
-    """
-
-    def __init__(self, threshold: int = 50):
-        super().__init__()
-        self.count = 0
+class ConvergenceCriterion(Criterion, ABC):
+    def __init__(self, fnc: Callable = lambda x, y: np.linalg.norm(x.r(y)),
+                 is_x_then: Callable = lt,
+                 threshold: float = 1.0,
+                 name: str = None, logging_level: int = logging.INFO,
+                 ):
+        super().__init__(name, logging_level)
+        self.fcn = fnc
+        self.ref = None
         self.threshold = threshold
+        self.operator = is_x_then
 
-    def __call__(self):
-        self.count += 1
-        self.done = self.count >= self.threshold
-
-
-class MaxAbs(Criterion):
-    """Absolute maximum of an array."""
-
-    def __init__(self, x, tol: float = 1e-6):
-        super().__init__()
-        self.ref = max(np.abs(x))
-        self.tol = tol
-
-    def __call__(self, x=1):
-        return max(np.abs(x)) <= self.tol
-
-
-class Threshold(Criterion):
-    """Enforces a maximum (or minimum) value."""
-
-    def __init__(self, value, threshold: float = 1.0, atol: float = 1e-6):
-        super().__init__()
-        self.value = value
-        self.threshold = threshold
-        self.atol = atol
-
-    def __call__(self):
-        self.done = bool(self.value[0] < self.threshold)
-        if np.isclose(self.value[0], self.threshold, atol=self.atol):
-            self.done = False
-
-
-class RelNorm(Criterion):
-    def __init__(self, ref: np.ndarray, tol: float = 1e-3):
-        super().__init__()
-        self.ref = np.linalg.norm(ref)
-        self.tol = tol
-
-    def __call__(self, x=1):
-        return np.linalg.norm(x) <= (self.tol * self.ref)
+    def __call__(self, nlf: Structure, p: Point) -> bool:
+        value = self.fcn(nlf, p)
+        if not self.ref:
+            self.ref = 1.0 * value
+        done = self.operator(value, self.threshold)
+        if done:
+            self.logger.info("Convergence criterion satisfied, value changed from %.2e exceeding threshold %.2e to %.2e" % (
+        self.ref, self.threshold, value))
+        return done
