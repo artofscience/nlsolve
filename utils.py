@@ -44,7 +44,12 @@ class Structure(ABC):
         """
         return None
 
-    def internal_load_free(self, p: Point) -> State:
+    def load(self, p: Point) -> State:
+        load = 1.0 * self.ff
+        load -= self.kfp(p) @ self.up if self.np else 0.0  # adds to rhs if nonzero prescribed dof
+        return load
+
+    def gf(self, p: Point) -> State:
         """
         Internal load associated to the free degrees of freedom.
 
@@ -53,7 +58,7 @@ class Structure(ABC):
         """
         return None
 
-    def internal_load_prescribed(self, p: Point) -> State:
+    def gp(self, p: Point) -> State:
         """
         Internal load associated to the prescribed degrees of freedom.
 
@@ -71,7 +76,7 @@ class Structure(ABC):
         """
 
         # free residual is defined as the free internal load PLUS the proportional loading parameter times the applied external load
-        return self.internal_load_free(p) - p.y * self.ff
+        return self.gf(p) - p.y * self.ff
 
     def rp(self, p: Point) -> State:
         """
@@ -82,7 +87,41 @@ class Structure(ABC):
         """
 
         # prescribed residual is defined as the prescribed internal load PLUS the reaction load
-        return self.internal_load_prescribed(p) - p.fp
+        return self.gp(p) - p.fp
+
+    def combine(self, xf, xp, p: Point) -> State:
+        """
+        Combines (append) the arrays corresponding to free and prescribed degrees of freedom.
+
+        :param xf: function corresponding to free dofs
+        :param xp: function corresponding to prescribed dofs
+        :param p: state
+        :return: combined array
+        """
+        x = np.array([])
+        if self.nf:
+            x = np.append(x, xf(p))
+        if self.np:
+            x = np.append(x, xp(p))
+        return x
+
+    def r(self, p: Point) -> State:
+        """
+        Retrieve residual load at state p
+
+        :param p: state
+        :return: residual load
+        """
+        return self.combine(self.rf, self.rp, p)
+
+    def g(self, p: Point) -> State:
+        """
+        Retrieve internal load at state p
+
+        :param p: state
+        :return: internal load
+        """
+        return self.combine(self.gf, self.gp, p)
 
     def kff(self, p: Point) -> State:
         """
@@ -158,6 +197,40 @@ class Point:
         self.ff = ff
         self.fp = fp
         self.y = y
+
+    @staticmethod
+    def combine(xf: np.ndarray | float, xp: np.ndarray | float) -> State:
+        """
+        Combines (append) the arrays corresponding to free and prescribed degrees of freedom.
+
+        :param xf: array corresponding to free dofs
+        :param xp: array corresponding to prescribed dofs
+        :return: combined array
+        """
+        x = np.array([])
+        if type(xf) is np.ndarray:
+            x = np.append(x, xf)
+        if type(xp) is np.ndarray:
+            x = np.append(x, xp)
+        return x
+
+    def f(self) -> State:
+        """
+        Retrieve load at state p
+
+        :param p: state
+        :return: load
+        """
+        return self.combine(self.ff, self.fp)
+
+    def u(self) -> State:
+        """
+        Retrieve motion at state p
+
+        :param p: state
+        :return: motion
+        """
+        return self.combine(self.uf, self.up)
 
     def __iadd__(self, other: Point) -> Point:
         """
