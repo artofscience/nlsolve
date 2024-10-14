@@ -25,21 +25,34 @@ constraint = GeneralizedArcLength(
 problem = InvolvedTrussProblemLoadBased()
 
 residual_norm = ConvergenceCriterion(
-    lambda x, y: np.linalg.norm(x.r(y)), operator.lt, 1e-9,
-    name="RN", logging_level=logging.DEBUG)
+    lambda x, y, z: np.linalg.norm(x.r(y)), operator.lt, 1e-9,
+    name="Residual norm", logging_level=logging.DEBUG)
 
 max_abs_residual_free_dofs = ConvergenceCriterion(
-    lambda x, y: np.max(np.abs((x.rf(y)))), operator.le, 1e-9,
+    lambda x, y, z: np.max(np.abs((x.rf(y)))), operator.le, 1e-9,
     name="MARF", logging_level=logging.DEBUG)
 
-criterium = residual_norm & max_abs_residual_free_dofs
-criterium.logger.name = "RN&MARF"
+motion_difference = ConvergenceCriterion(
+    lambda x, y, z: np.linalg.norm(y.u - z.u), operator.lt, 1e-9,
+    name="Motion difference norm", logging_level=logging.DEBUG)
+
+load_difference = ConvergenceCriterion(
+    lambda x, y, z: np.linalg.norm(y.f - z.f), operator.lt, 1e-9,
+    name="Load difference norm", logging_level=logging.DEBUG)
+
+absolute_load_difference = ConvergenceCriterion(
+    lambda x, y, z: np.abs(y.y - z.y), operator.lt, 1e-9)
+
+criterium = residual_norm & load_difference & motion_difference & max_abs_residual_free_dofs & absolute_load_difference
+criterium.logger.name = "ALL"
+
+
 
 solution_method = IterativeSolver(
     nlf = problem,
     constraint = constraint,
     converged = criterium,
-    maximum_corrections = 4,
+    maximum_corrections = 20,
     name = "Solver",
     logging_level = logging.DEBUG)
 

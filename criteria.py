@@ -95,9 +95,13 @@ class ConvergenceCriterion(Criterion, ABC):
         self.ref = None
         self.threshold = threshold
         self.operator = is_x_then
+        self.point_old = None
 
     def __call__(self, nlf: Structure, p: Point) -> bool:
-        value = self.fcn(nlf, p)
+        if self.point_old is None:
+            self.point_old = 0.0 * p
+        value = self.fcn(nlf, p, self.point_old if self.point_old is not None else p)
+        self.point_old = 1.0 * p
         if not self.ref:
             self.ref = 1.0 * value
         done = self.operator(value, self.threshold)

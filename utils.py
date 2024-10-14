@@ -214,6 +214,7 @@ class Point:
             x = np.append(x, xp)
         return x
 
+    @property
     def f(self) -> State:
         """
         Retrieve load at state p
@@ -223,6 +224,7 @@ class Point:
         """
         return self.combine(self.ff, self.fp)
 
+    @property
     def u(self) -> State:
         """
         Retrieve motion at state p
