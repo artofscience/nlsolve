@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import List, Tuple
 
 from constraints import Constraint, NewtonRaphson
@@ -18,6 +17,9 @@ class CounterError(Exception):
 
 import logging
 
+from criteria import Counter
+
+
 
 class IterativeSolver:
     """
@@ -25,7 +27,7 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
 
-    def __init__(self, nlf: Structure, constraint: Constraint = None,
+    def __init__(self, nlf: Structure, constraint: Constraint = None, converged = None,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
         """
@@ -37,6 +39,7 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
+        self.converged = converged
         self.nlf: Structure = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
@@ -55,10 +58,6 @@ class IterativeSolver:
         p = sol[-1]  # takes the initial equilibrium point (what if this is not in equilibrium?)
         tries = [p]  # initialize storage for attempted states and add initial point
 
-        # dp = 0.0 * p # make a copy of the structure of p and reset all entries to zeros
-
-        iterative_counter = 0  # start with 0 as we count the corrections only
-
         # region PREDICTOR
 
         # initialize structure of solve return values if free degrees of freedom
@@ -67,9 +66,7 @@ class IterativeSolver:
         # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
         # note: for predictor ddx0 = 0, hence only a single rhs for this solve
         if self.nlf.nf:
-            load = 1.0 * self.nlf.ff
-            load -= self.nlf.kfp(p) @ self.nlf.up if self.nlf.np else 0.0  # adds to rhs if nonzero prescribed dof
-            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), load)
+            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
@@ -86,24 +83,22 @@ class IterativeSolver:
 
         # endregion
 
-        # combine residuals associated to free and prescribed dofs (if available) for termiantion criteria
-        r = self.get_r(p + dp)
 
-        rnorm_ref = np.linalg.norm(r)
-        rmax_ref = np.amax(np.abs(r))
+        counter = Counter(self.maximum_corrections)
 
         # make corrections until termination criteria are met
-        while (rmax := np.amax(np.abs(r))) > 1e-9 or (rnorm := np.linalg.norm(r)) > 1e-6:
+        while True:
+            if counter:
+                raise CounterError("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold), counter.count)
 
-            iterative_counter += 1  # increase iterative solver counter
+            if self.converged(self.nlf, p+dp):
+                break
 
             # region CORRECTOR
 
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.nlf.nf:
-                load = 1.0 * self.nlf.ff
-                load -= self.nlf.kfp(p + dp) @ self.nlf.up if self.nlf.np else 0.0
-                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), np.array([-self.nlf.rf(p + dp), load]).T)
+                ddx[:, :] = np.linalg.solve(self.nlf.kff(p + dp), np.array([-self.nlf.rf(p + dp), self.nlf.load(p + dp)]).T)
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
@@ -111,9 +106,9 @@ class IterativeSolver:
                 ddy = self.constraint.corrector(self.nlf, p, dp, ddx)
             except ValueError as error:
                 self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
-                raise ValueError("A suitable correction cannot be found!", iterative_counter + 1)
+                raise ValueError("A suitable correction cannot be found!", counter.count)
 
-            self.logger.debug("Corrector %d: ddy = %+e" % (iterative_counter, ddy))
+            self.logger.debug("Corrector %d: ddy = %+e" % (counter.count, ddy))
 
             dp += self.nlf.ddp(p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
 
@@ -121,32 +116,7 @@ class IterativeSolver:
 
             tries.append(p + dp)  # add attempt to tries
 
-            r = self.get_r(p + dp)  # retrieve residual load for termination criteria
-
-            # check if maximum number of corrections is not exceeded
-            if iterative_counter > self.maximum_corrections:
-                raise CounterError(
-                    "Maximum number of corrections %2d >%2d" % (iterative_counter, self.maximum_corrections), iterative_counter + 1)
-
-        self.logger.debug("Maximum absolute residual reduced from %e to %e" % (rmax_ref, rmax))
-        self.logger.debug("Residual norm reduced from %e to %e" % (rnorm_ref, rnorm))
-        self.logger.debug("Number of corrections: %d" % iterative_counter)
-        return dp, iterative_counter + 1, tries
-
-    def get_r(self, p):
-        """
-        Retrieve residual load at state p
-
-        :param p: state
-        :return: residual load
-        """
-        r = np.array([])
-        if self.nlf.nf:
-            rf = self.nlf.rf(p)
-            r = np.append(r, rf)
-        if self.nlf.np:
-            r = np.append(r, self.nlf.rp(p))
-        return r
+        return dp, counter.count, tries
 
 
 class IncrementalSolver:
