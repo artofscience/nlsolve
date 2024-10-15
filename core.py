@@ -4,6 +4,8 @@ from typing import List, Tuple
 from constraints import Constraint, NewtonRaphson
 from controllers import Controller
 
+import operator
+
 import numpy as np
 
 from logger import CustomFormatter, create_logger
@@ -17,8 +19,7 @@ class CounterError(Exception):
 
 import logging
 
-from criteria import Counter
-
+from criteria import Counter, ConvergenceCriterion
 
 
 class IterativeSolver:
@@ -126,7 +127,8 @@ class IncrementalSolver:
 
     def __init__(self, solution_method: IterativeSolver,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
-                 maximum_increments: int = 1000) -> None:
+                 maximum_increments: int = 1000,
+                 terminated = None) -> None:
         """
         Initialization of the incremental solver.
 
@@ -140,6 +142,7 @@ class IncrementalSolver:
         """
         self.solution_method = solution_method
         self.maximum_increments: int = maximum_increments
+        self.terminated = terminated if terminated is not None else ConvergenceCriterion(lambda x, y, z: y.y, operator.ge, 1.0)
 
         self.__name__ = name
 
@@ -172,7 +175,11 @@ class IncrementalSolver:
         try:
             # currently very simple termination criteria (load proportionality parameter termination criteria)
             # ideally terminated at p.y == 1.0
-            while -1.0 < p.y < 1.0:
+
+            while True:
+                if self.terminated(self.solution_method.nlf, p):
+                    break
+
                 incremental_counter += 1
 
                 print("")
