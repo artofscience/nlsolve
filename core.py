@@ -4,8 +4,7 @@ from typing import List, Tuple
 from constraints import Constraint, NewtonRaphson
 from controllers import Controller
 
-import operator
-
+from operator import ge, le
 import numpy as np
 
 from logger import CustomFormatter, create_logger
@@ -16,10 +15,13 @@ State = np.ndarray[float] | None
 class CounterError(Exception):
     pass
 
+class DivergenceError(Exception):
+    pass
+
 
 import logging
 
-from criteria import Counter, ConvergenceCriterion
+from criteria import Counter, CriterionP, residual_norm
 
 
 class IterativeSolver:
@@ -28,7 +30,8 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
 
-    def __init__(self, nlf: Structure, constraint: Constraint = None, converged = None,
+    def __init__(self, nlf: Structure, constraint: Constraint = None,
+                 converged = None, diverged = None,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
         """
@@ -40,7 +43,8 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.converged = converged
+        self.converged = converged if converged is not None else residual_norm(1e-9)
+        self.diverged = diverged
         self.nlf: Structure = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
@@ -53,6 +57,8 @@ class IterativeSolver:
 
     def __call__(self, sol: List[Point], length: float = 0.1) -> Tuple[Point, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
+        self.converged.reset()
+        self.diverged.reset()
 
         self.constraint.dl = length  # set characteristic length of constraint
 
@@ -78,7 +84,7 @@ class IterativeSolver:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        self.logger.debug("Predictor 0: ddy = %+f" % ddy)
+        self.logger.debug("Predictor 0: ddy = %+e" % ddy)
 
         dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
 
@@ -92,8 +98,13 @@ class IterativeSolver:
             if counter:
                 raise CounterError("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold), counter.count)
 
-            if self.converged(self.nlf, p+dp):
+            if self.converged(self.nlf, p+dp, ddy):
+                # terminate the loop if converged
                 break
+
+            if self.diverged(self.nlf, p+dp, ddy):
+                # raise error if diverged
+                raise DivergenceError("Solver diverged!", counter.count)
 
             # region CORRECTOR
 
@@ -142,7 +153,8 @@ class IncrementalSolver:
         """
         self.solution_method = solution_method
         self.maximum_increments: int = maximum_increments
-        self.terminated = terminated if terminated is not None else ConvergenceCriterion(lambda x, y, z: y.y, operator.ge, 1.0)
+        self.terminated = terminated if terminated is not None else (
+                CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
 
         self.__name__ = name
 
@@ -177,7 +189,7 @@ class IncrementalSolver:
             # ideally terminated at p.y == 1.0
 
             while True:
-                if self.terminated(self.solution_method.nlf, p):
+                if self.terminated(self.solution_method.nlf, p, 1.0):
                     break
 
                 incremental_counter += 1
@@ -192,7 +204,7 @@ class IncrementalSolver:
                         dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
                         iterative_tries += iterates
                         break
-                    except (ValueError, CounterError) as error:
+                    except (ValueError, CounterError, DivergenceError) as error:
                         self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                         iterative_tries += error.args[1]
                         self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
