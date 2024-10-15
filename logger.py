@@ -13,7 +13,7 @@ class CustomFormatter(logging.Formatter):
     red = '\u001b[31m'
     bold_red = '\x1b[31;1m'
     reset = '\x1b[0m'
-    format = "%(name)-6s %(levelname)-8s %(message)s"
+    format = "%(levelname)-8s %(name)-15s %(message)s"
 
     FORMATS = {
         logging.DEBUG: green + format + reset,
