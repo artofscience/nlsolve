@@ -29,16 +29,16 @@ for constraint in constraints:
         name="IncrementalSolver "+name,
         logging_level=logging.INFO)
 
-    initial_point = Point(uf=np.zeros(2), ff=np.zeros(2))
+    initial_point = Point(qf=np.zeros(2), ff=np.zeros(2))
     solution, tries = solver(initial_point)
 
     for a in tries:
-        plt.plot([i.uf[1] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf[0] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.qf[1] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
+        plt.plot([i.qf[0] for i in a], [i.ff[1] for i in a], 'ko', alpha=0.1)
 
     external_load = [i.ff[1] for i in solution]
-    free_motion_dof1 = [i.uf[1] for i in solution]
-    free_motion_dof0 = [i.uf[0] for i in solution]
+    free_motion_dof1 = [i.qf[1] for i in solution]
+    free_motion_dof0 = [i.qf[0] for i in solution]
     plt.plot(free_motion_dof0, external_load, 'o', alpha=0.5)
     plt.plot(free_motion_dof1, external_load, 'o', alpha=0.5)
 

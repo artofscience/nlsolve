@@ -18,15 +18,15 @@ class Structure(ABC):
     """
     def __init__(self):
         self.ff = self.ff()
-        self.up = self.up()
+        self.qp = self.qp()
 
         # get dimension of free and prescribed degrees of freedom
         self.nf = np.shape(self.ff)[0] if self.ff is not None else None
-        self.np = np.shape(self.up)[0] if self.up is not None else None
+        self.np = np.shape(self.qp)[0] if self.qp is not None else None
 
         # squared norm of load external load and prescribed motion
         self.ff2 = np.dot(self.ff, self.ff) if self.nf is not None else None
-        self.up2 = np.dot(self.up, self.up) if self.np is not None else None
+        self.qp2 = np.dot(self.qp, self.qp) if self.np is not None else None
 
     def ff(self) -> State:
         """
@@ -36,7 +36,7 @@ class Structure(ABC):
         """
         return None
 
-    def up(self) -> State:
+    def qp(self) -> State:
         """
         Prescribed motion.
 
@@ -46,7 +46,7 @@ class Structure(ABC):
 
     def load(self, p: Point) -> State:
         load = 1.0 * self.ff
-        load -= self.kfp(p) @ self.up if self.np else 0.0  # adds to rhs if nonzero prescribed dof
+        load -= self.kfp(p) @ self.qp if self.np else 0.0  # adds to rhs if nonzero prescribed dof
         return load
 
     def gf(self, p: Point) -> State:
@@ -168,32 +168,32 @@ class Structure(ABC):
         :param y: iterative load parameter
         :return:
         """
-        dduf, ddup, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
+        ddqf, ddqp, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
 
         if self.nf:
-            dduf = u[:, 0] + y * u[:, 1]
+            ddqf = u[:, 0] + y * u[:, 1]
             ddff = y * self.ff
         if self.np:
-            ddup = y * self.up
-            ddfp = self.rp(p) + y * self.kpp(p) @ self.up
-            ddfp += self.kpf(p) @ dduf if self.nf else 0.0
+            ddqp = y * self.qp
+            ddfp = self.rp(p) + y * self.kpp(p) @ self.qp
+            ddfp += self.kpf(p) @ ddqf if self.nf else 0.0
 
-        return Point(dduf, ddup, ddff, ddfp, y)
+        return Point(ddqf, ddqp, ddff, ddfp, y)
 
 
 class Point:
-    def __init__(self, uf: State = 0.0, up: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:
+    def __init__(self, qf: State = 0.0, qp: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:
         """
         Initialize an (equilibrium) point given it's load and corresponding motion in partitioned format.
 
-        :param uf: free / unknown motion
-        :param up: prescribed motion
+        :param qf: free / unknown motion
+        :param qp: prescribed motion
         :param ff: external / applied load
         :param fp: reaction load
         :param y: load proportionality parameter
         """
-        self.uf = uf
-        self.up = up
+        self.qf = qf
+        self.qp = qp
         self.ff = ff
         self.fp = fp
         self.y = y
@@ -225,14 +225,14 @@ class Point:
         return self.combine(self.ff, self.fp)
 
     @property
-    def u(self) -> State:
+    def q(self) -> State:
         """
         Retrieve motion at state p
 
         :param p: state
         :return: motion
         """
-        return self.combine(self.uf, self.up)
+        return self.combine(self.qf, self.qp)
 
     def __iadd__(self, other: Point) -> Point:
         """
@@ -241,8 +241,8 @@ class Point:
         :param other: another Point object
         :return: sum of Points
         """
-        self.uf += other.uf
-        self.up += other.up
+        self.qf += other.qf
+        self.qp += other.qp
         self.ff += other.ff
         self.fp += other.fp
         self.y += other.y
@@ -258,8 +258,8 @@ class Point:
         :return: a copy of itself with the entries multiplied by the other Points entries
         """
         out = deepcopy(self)
-        out.uf *= other
-        out.up *= other
+        out.qf *= other
+        out.qp *= other
         out.ff *= other
         out.fp *= other
         out.y *= other
@@ -272,7 +272,7 @@ class Point:
         :param other: another Point object
         :return: a third Point object that is the addition
         """
-        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
+        out = deepcopy(Point(self.qf, self.qp, self.ff, self.fp, self.y))
         out += other
         return out
 
@@ -283,6 +283,6 @@ class Point:
         :param other: another Point object
         :return: a third Point object that is the substraction
         """
-        out = deepcopy(Point(self.uf, self.up, self.ff, self.fp, self.y))
+        out = deepcopy(Point(self.qf, self.qp, self.ff, self.fp, self.y))
         out -= other
         return out

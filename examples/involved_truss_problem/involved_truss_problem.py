@@ -26,10 +26,10 @@ class InvolvedTrussProblemLoadBased(InvolvedTrussProblem):
         return np.array([0, 1.0], dtype=float)
 
     def gf(self, p):
-        return super().internal_load(p.uf[0], p.uf[1])
+        return super().internal_load(p.qf[0], p.qf[1])
 
     def kff(self, p):
-        return super().tangent_stiffness(p.uf[0])
+        return super().tangent_stiffness(p.qf[0])
 
 class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
 
@@ -40,20 +40,20 @@ class InvolvedTrussProblemMotionBased(InvolvedTrussProblem):
         return np.array([0.0])
 
     def gp(self, p):
-        return super().internal_load(p.uf, p.up)[1]
+        return super().internal_load(p.qf, p.qp)[1]
 
     def gf(self, p):
-        return super().internal_load(p.uf, p.up)[0]
+        return super().internal_load(p.qf, p.qp)[0]
 
     def kff(self, p):
-        return np.array([[super().tangent_stiffness(p.uf[0])[0, 0]]])
+        return np.array([[super().tangent_stiffness(p.qf[0])[0, 0]]])
 
     def kpp(self, p):
-        a = np.array([super().tangent_stiffness(p.uf[0])[1, 1]])
+        a = np.array([super().tangent_stiffness(p.qf[0])[1, 1]])
         return a
 
     def kfp(self, p):
-        return np.array([super().tangent_stiffness(p.uf[0])[1, 0]])
+        return np.array([super().tangent_stiffness(p.qf[0])[1, 0]])
 
     def kpf(self, p):
-        return np.array([super().tangent_stiffness(p.uf[0])[0, 1]])
+        return np.array([super().tangent_stiffness(p.qf[0])[0, 1]])

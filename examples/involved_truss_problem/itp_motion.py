@@ -30,19 +30,19 @@ for constraint in constraints:
         name="IncrementalSolver "+name,
         logging_level=logging.INFO)
 
-    initial_point = Point(uf=np.zeros(1), up=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1))
+    initial_point = Point(qf=np.zeros(1), qp=np.zeros(1), ff=np.zeros(1), fp=np.zeros(1))
     solution, tries = solver(initial_point)
 
     for a in tries:
-        plt.plot([i.up for i in a], [i.fp for i in a], 'ko', alpha=0.1)
-        plt.plot([i.uf for i in a], [i.fp for i in a], 'ko', alpha=0.1)
+        plt.plot([i.qp for i in a], [i.fp for i in a], 'ko', alpha=0.1)
+        plt.plot([i.qf for i in a], [i.fp for i in a], 'ko', alpha=0.1)
 
-    plt.plot([i.up for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
-    plt.plot([i.uf for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
+    plt.plot([i.qp for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
+    plt.plot([i.qf for i in solution], [i.fp for i in solution], 'o', alpha=0.5)
 
     if constraint.__class__.__name__ == "NewtonRaphson":
         for i in solution:
-            plt.axvline(i.up)
+            plt.axvline(i.qp)
 
     plt.draw()
     print("Pause...")

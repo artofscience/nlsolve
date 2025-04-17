@@ -124,7 +124,7 @@ class CriterionP(CriterionBase):
 
     One can define a function, e.g. the norm of the displacement vector,
     and compare to some float via an operator
-    >>> def my_function(p: Point) -> float: return np.linalg.norm(p.u)
+    >>> def my_function(p: Point) -> float: return np.linalg.norm(p.q)
     >>> my_criterion = CriterionP(my_function, lt, 1.0)
 
     Alternativley one can use a lambda function.

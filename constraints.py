@@ -77,7 +77,7 @@ class NewtonRaphson(Constraint):
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
 
         load = 0.0
-        load += nlf.up2 if nlf.np else 0.0
+        load += nlf.qp2 if nlf.np else 0.0
         load += nlf.ff2 if nlf.nf else 0.0
 
         return self.dl / np.sqrt(load)
@@ -106,10 +106,10 @@ class ArcLength(Constraint):
         if nlf.nf:
             a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.up
+            tmpa = nlf.kpp(p) @ nlf.qp
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
-            a += self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.up2
+            a += self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
@@ -120,15 +120,15 @@ class ArcLength(Constraint):
         if nlf.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
+            a[1] += 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
             a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
-            a[2] += np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
+            a[2] += np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
             a[0] += nlf.up2
-            a[1] += 2 * np.dot(nlf.up, dp.up)
-            a[2] += np.dot(dp.up, dp.up)
-            tmpa = nlf.kpp(p + dp) @ nlf.up
+            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[2] += np.dot(dp.qp, dp.qp)
+            tmpa = nlf.kpp(p + dp) @ nlf.qp
             tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
@@ -149,11 +149,11 @@ class ArcLength(Constraint):
         Note: this rule cannot be used in the first iteration since the initial corrections are equal to zero at the beginning of each increment.
         """
         if nlf.nf:
-            cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf)
+            cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf)
         if nlf.np:
-            cpd = lambda i: np.dot(dp.up, dp.up + cps[i].up)
+            cpd = lambda i: np.dot(dp.qp, dp.qp + cps[i].qp)
             if nlf.nf:
-                cpd = lambda i: np.dot(dp.uf, dp.uf + cps[i].uf) + np.dot(dp.up, dp.up + cps[i].up)
+                cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf) + np.dot(dp.qp, dp.qp + cps[i].qp)
 
         return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
 
@@ -163,19 +163,19 @@ class ArcLength(Constraint):
 
         else:
             if nlf.nf:
-                vec1 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
-                vec2 = np.append(sol[-2].uf - p.uf - cps[1].uf, sol[-2].ff - p.ff - cps[1].ff)
+                vec1 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
+                vec2 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
 
             if nlf.np:
-                vec1 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
-                vec2 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
+                vec1 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
+                vec2 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
 
                 if nlf.nf:
-                    vec11 = np.append(sol[-2].uf - p.uf - cps[0].uf, sol[-2].ff - p.ff - cps[0].ff)
-                    vec12 = np.append(sol[-2].up - p.up - cps[0].up, sol[-2].fp - p.fp - cps[0].fp)
+                    vec11 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
+                    vec12 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
                     vec1 = np.append(vec11, vec12)
-                    vec21 = np.append(sol[-2].uf - p.uf - cps[1].uf, sol[-2].ff - p.ff - cps[1].ff)
-                    vec22 = np.append(sol[-2].up - p.up - cps[1].up, sol[-2].fp - p.fp - cps[1].fp)
+                    vec21 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
+                    vec22 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
                     vec2 = np.append(vec21, vec22)
 
             return cps[0].y if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1].y
@@ -188,7 +188,7 @@ class NewtonRaphsonByArcLength(ArcLength):
         if nlf.nf:
             a += self.beta ** 2 * nlf.ff2
         if nlf.np:
-            a += nlf.up2
+            a += nlf.qp2
 
         return self.dl / np.sqrt(a)
 
@@ -201,9 +201,9 @@ class NewtonRaphsonByArcLength(ArcLength):
             a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
-            a[0] += nlf.up2
-            a[1] += 2 * np.dot(nlf.up, dp.up)
-            a[2] += np.dot(dp.up, dp.up)
+            a[0] += nlf.qp2
+            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[2] += np.dot(dp.qp, dp.qp)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
@@ -236,10 +236,10 @@ class GeneralizedArcLength(ArcLength):
         if nlf.nf:
             a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.up
+            tmpa = nlf.kpp(p) @ nlf.qp
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
-            a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.up2
+            a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
@@ -250,15 +250,15 @@ class GeneralizedArcLength(ArcLength):
         if nlf.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.uf + u[:, 0])
+            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
             a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
-            a[2] += self.alpha * np.dot(dp.uf + u[:, 0], dp.uf + u[:, 0])
+            a[2] += self.alpha * np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
-            a[0] += nlf.up2
-            a[1] += 2 * np.dot(nlf.up, dp.up)
-            a[2] += np.dot(dp.up, dp.up)
-            tmpa = nlf.kpp(p + dp) @ nlf.up
+            a[0] += nlf.qp2
+            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[2] += np.dot(dp.qp, dp.qp)
+            tmpa = nlf.kpp(p + dp) @ nlf.qp
             tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]

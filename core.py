@@ -44,7 +44,7 @@ class IterativeSolver:
 
         # create some aliases for commonly used functions
         self.converged = converged if converged is not None else residual_norm(1e-9)
-        self.diverged = diverged
+        self.diverged = diverged if diverged is not None else divergence_default()
         self.nlf: Structure = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
