@@ -256,3 +256,8 @@ def residual_norm(threshold, name: str ="Residual norm", logging_level: int = lo
     Creates instance of CriterionX that checks the 2-norm of the residual vector.
     """
     return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold, name=name, logging_level=logging_level)
+
+def divergence_default():
+    return CriterionYH(
+    lambda x, y: abs(y) - abs(x), lt, 0.0,
+    name="DAL", logging_level=logging.DEBUG)

@@ -21,7 +21,7 @@ class DivergenceError(Exception):
 
 import logging
 
-from criteria import Counter, CriterionP, residual_norm
+from criteria import Counter, CriterionP, residual_norm, divergence_default
 
 
 class IterativeSolver:
@@ -48,7 +48,7 @@ class IterativeSolver:
         self.nlf: Structure = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
-        self.residual_norm_tolerance: float = 1e-3
+
 
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
