@@ -43,7 +43,7 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.converged = converged if converged is not None else residual_norm(1e-9)
+        self.converged = converged if converged is not None else residual_norm(1e-6)
         self.diverged = diverged if diverged is not None else divergence_default()
         self.nlf: Structure = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
@@ -73,7 +73,9 @@ class IterativeSolver:
         # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
         # note: for predictor ddx0 = 0, hence only a single rhs for this solve
         if self.nlf.nf:
-            ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
+            # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
+            # Consider there is no equilibrium (yet)
+            ddx[:, :] = np.linalg.solve(self.nlf.kff(p), np.array([-self.nlf.rf(p), self.nlf.load(p)]).T)
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0

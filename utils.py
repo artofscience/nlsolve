@@ -16,56 +16,45 @@ class Structure(ABC):
     If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
     """
-    def __init__(self):
-        self.ff = self.ff()
-        self.qp = self.qp()
+    def __init__(self, nlf, ixf, ixp, ff: np.ndarray, qp: np.ndarray):
+        self.nlf = nlf
 
-        # get dimension of free and prescribed degrees of freedom
-        self.nf = np.shape(self.ff)[0] if self.ff is not None else None
-        self.np = np.shape(self.qp)[0] if self.qp is not None else None
+        self.ixf = ixf
+        self.ixp = ixp
+
+        self.ff = ff.astype(float)
+        self.qp = qp.astype(float)
+
+        self.nf = len(self.ixf)
+        self.np = len(self.ixp)
+        self.n = self.nf + self.np
 
         # squared norm of load external load and prescribed motion
         self.ff2 = np.dot(self.ff, self.ff) if self.nf is not None else None
         self.qp2 = np.dot(self.qp, self.qp) if self.np is not None else None
 
-    def ff(self) -> State:
-        """
-        Applied external load.
+    def force(self, p):
+        q = np.zeros(self.n)
+        q[self.ixp] = p.qp
+        q[self.ixf] = p.qf
+        return self.nlf.force(q)
 
-        :return: None
-        """
-        return None
-
-    def qp(self) -> State:
-        """
-        Prescribed motion.
-
-        :return: None
-        """
-        return None
+    def jacobian(self, p):
+        q = np.zeros(self.n)
+        q[self.ixp] = p.qp
+        q[self.ixf] = p.qf
+        return self.nlf.jacobian(q)
 
     def load(self, p: Point) -> State:
         load = 1.0 * self.ff
         load -= self.kfp(p) @ self.qp if self.np else 0.0  # adds to rhs if nonzero prescribed dof
         return load
 
-    def gf(self, p: Point) -> State:
-        """
-        Internal load associated to the free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
     def gp(self, p: Point) -> State:
-        """
-        Internal load associated to the prescribed degrees of freedom.
+        return self.force(p)[self.ixp]
 
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
+    def gf(self, p: Point) -> State:
+        return self.force(p)[self.ixf]
 
     def rf(self, p: Point) -> State:
         """
@@ -123,41 +112,17 @@ class Structure(ABC):
         """
         return self.combine(self.gf, self.gp, p)
 
-    def kff(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the free-free degrees of freedom.
+    def kff(self, p):
+        return self.jacobian(p)[self.ixf, :][:, self.ixf]
 
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
+    def kpp(self, p):
+        return self.jacobian(p)[self.ixp, :][:, self.ixp]
 
-    def kfp(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the free-prescribed degrees of freedom.
+    def kfp(self, p):
+        return self.jacobian(p)[self.ixf, :][:, self.ixp]
 
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def kpf(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the prescribed-free degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
-
-    def kpp(self, p: Point) -> State:
-        """
-        Tangent stiffness matrix / Jacobian associated to the prescribed-prescribed degrees of freedom.
-
-        :param p: Point containing current state (motion, load)
-        :return: None
-        """
-        return None
+    def kpf(self, p):
+        return self.jacobian(p)[self.ixp, :][:, self.ixf]
 
     def ddp(self, p: Point, u: np.ndarray, y: float) -> Point:
         """
@@ -192,11 +157,15 @@ class Point:
         :param fp: reaction load
         :param y: load proportionality parameter
         """
-        self.qf = qf
-        self.qp = qp
-        self.ff = ff
-        self.fp = fp
-        self.y = y
+        self.qf = self.make_float(qf)
+        self.qp = self.make_float(qp)
+        self.ff = self.make_float(ff)
+        self.fp = self.make_float(fp)
+        self.y = float(y)
+
+    @staticmethod
+    def make_float(x):
+        return x.astype(float) if type(x) is np.ndarray else x
 
     @staticmethod
     def combine(xf: np.ndarray | float, xp: np.ndarray | float) -> State:
