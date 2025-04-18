@@ -76,7 +76,7 @@ class Structure(ABC):
         """
 
         # free residual is defined as the free internal load PLUS the proportional loading parameter times the applied external load
-        return self.gf(p) - p.y * self.ff
+        return self.gf(p) - p.ff - p.y * self.ff
 
     def rp(self, p: Point) -> State:
         """

@@ -184,6 +184,10 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
+        " First find equilibrium given the initial guess "
+        dp, _, _ = self.solution_method(equilibrium_solutions, 0.0)
+        equilibrium_solutions[-1] += dp
+
         try:
             # currently very simple termination criteria (load proportionality parameter termination criteria)
             # ideally terminated at p.y == 1.0
