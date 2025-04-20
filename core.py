@@ -55,7 +55,7 @@ class IterativeSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
-    def __call__(self, sol: List[Point], length: float = 0.1) -> Tuple[Point, int, List[Point]]:
+    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
         self.converged.reset()
         self.diverged.reset()
@@ -185,10 +185,6 @@ class IncrementalSolver:
         iterative_tries = 0  # counts total number of iterates (cumulative throughout increments)
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
-
-        " First find equilibrium given the initial guess "
-        dp, _, _ = self.solution_method(equilibrium_solutions, 0.0)
-        equilibrium_solutions[-1] += dp
 
         try:
             # currently very simple termination criteria (load proportionality parameter termination criteria)

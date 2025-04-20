@@ -125,7 +125,7 @@ class ArcLength(Constraint):
             a[2] += np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
-            a[0] += nlf.up2
+            a[0] += nlf.qp2
             a[1] += 2 * np.dot(nlf.qp, dp.qp)
             a[2] += np.dot(dp.qp, dp.qp)
             tmpa = nlf.kpp(p + dp) @ nlf.qp

@@ -16,7 +16,7 @@ class Structure(ABC):
     If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
     """
-    def __init__(self, nlf, ixf, ixp, ff: np.ndarray, qp: np.ndarray):
+    def __init__(self, nlf, ixf=None, ixp=None, ff = None, qp = None):
         self.nlf = nlf
 
         self.ixf = ixf
@@ -65,7 +65,7 @@ class Structure(ABC):
         """
 
         # free residual is defined as the free internal load PLUS the proportional loading parameter times the applied external load
-        return self.gf(p) - p.ff - p.y * self.ff
+        return self.gf(p) - p.ff
 
     def rp(self, p: Point) -> State:
         """
