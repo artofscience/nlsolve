@@ -3,13 +3,16 @@ from math import pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import NewtonRaphson, ArcLength
+from constraints import GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
+from controllers import Adaptive
+from criteria import residual_norm
 
 
 class TrussProblem:
-    theta0 = pi / 3
+    def __init__(self, theta0: float = pi/3):
+        self.theta0 = theta0
 
     def force(self, a):
         return (1 / np.sqrt(1 - 2 * a * sin(self.theta0) + a ** 2) - 1) * (sin(self.theta0) - a)
@@ -22,17 +25,25 @@ class TrussProblem:
 
 
 if __name__ == "__main__":
-    prob = Structure(TrussProblem(), ixf=[0, 1], ff=np.array([0, 1]))
-    solver = IncrementalSolver(IterativeSolver(prob, NewtonRaphson()))
-    solution, tries = solver(Point(qp=np.array([0.0]), fp=np.array([0.0])))
+    truss_problem = TrussProblem(pi/2.1)
+
+    problem = Structure(truss_problem, ixf=[0], ff=np.array([1]))
+
+    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-10))
+
+    stepper = IncrementalSolver(solver)
+
+    p0 = Point(qf=np.zeros(1), ff=np.zeros(1))
+
+    controller = Adaptive(0.05, max=0.5, incr=1.2, decr=0.2, min=0.001)
+
+    solution, tries = stepper(p0, controller)
+
+    # PLOTTING
 
     for a in tries:
-        plt.plot([i.qf for i in a], [i.ff for i in a], 'ko', alpha=0.1)
+        plt.plot([i.qf for i in a],[i.ff for i in a], 'ko--', alpha=0.1)
 
-    plt.plot([i.qp for i in solution], [i.fp for i in solution], 'bo')
+    plt.plot([i.qf for i in solution], [i.ff for i in solution], 'ko-')
 
-    for i in solution:
-        plt.axvline(x=i.qp, color='b', alpha=0.1)
-
-    plt.gca().axis('equal')
     plt.show()
