@@ -86,9 +86,8 @@ class IterativeSolver:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        self.logger.debug("Predictor 0: ddy = %+e" % ddy)
-
         dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
+        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.nlf.r(p+dp))))
 
         # endregion
 
@@ -122,9 +121,8 @@ class IterativeSolver:
                 self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                 raise ValueError("A suitable correction cannot be found!", counter.count)
 
-            self.logger.debug("Corrector %d: ddy = %+e" % (counter.count, ddy))
-
             dp += self.nlf.ddp(p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
+            self.logger.debug("Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.nlf.r(p + dp))))
 
             #endregion
 
