@@ -16,33 +16,37 @@ class Structure(ABC):
     If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
     """
-    def __init__(self, nlf, ixf=None, ixp=None, ff = None, qp = None):
+    def __init__(self, nlf, ixf=None, ixp=None, ff=None, qp=None):
         self.nlf = nlf
 
         self.ixf = ixf
         self.ixp = ixp
 
-        self.ff = ff.astype(float)
-        self.qp = qp.astype(float)
+        self.ff = ff.astype(float) if ff is not None else None
+        self.qp = qp.astype(float) if qp is not None else None
 
-        self.nf = len(self.ixf)
-        self.np = len(self.ixp)
+        self.nf = len(self.ixf) if ixf is not None else 0
+        self.np = len(self.ixp) if ixp is not None else 0
         self.n = self.nf + self.np
 
         # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ff, self.ff) if self.nf is not None else None
-        self.qp2 = np.dot(self.qp, self.qp) if self.np is not None else None
+        self.ff2 = np.dot(self.ff, self.ff) if self.nf else None
+        self.qp2 = np.dot(self.qp, self.qp) if self.np else None
 
     def force(self, p):
         q = np.zeros(self.n)
-        q[self.ixp] = p.qp
-        q[self.ixf] = p.qf
+        if self.np:
+            q[self.ixp] = p.qp
+        if self.nf:
+            q[self.ixf] = p.qf
         return self.nlf.force(q)
 
     def jacobian(self, p):
         q = np.zeros(self.n)
-        q[self.ixp] = p.qp
-        q[self.ixf] = p.qf
+        if self.np:
+            q[self.ixp] = p.qp
+        if self.nf:
+            q[self.ixf] = p.qf
         return self.nlf.jacobian(q)
 
     def load(self, p: Point) -> State:
@@ -162,6 +166,9 @@ class Point:
         self.ff = self.make_float(ff)
         self.fp = self.make_float(fp)
         self.y = float(y)
+
+    def print(self):
+        print("ff = {}, qp = {}, qf = {}, fp = {}, y = {}".format(self.ff, self.qp, self.qf, self.fp, self.y))
 
     @staticmethod
     def make_float(x):
