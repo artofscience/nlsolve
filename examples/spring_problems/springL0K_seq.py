@@ -26,14 +26,14 @@ qp[-2] = 2.0 # so change initial restlength by 2.0 m
 spring = Structure(SpringL0K(), ixf, ixp, ff, qp)
 
 # setup stepper
-solverNR = IterativeSolver(spring, converged=residual_norm(1e-3))
+solverNR = IterativeSolver(spring, converged=residual_norm(1e-1))
 stepperNR = IncrementalSolver(solverNR)
 
-solverARC = IterativeSolver(spring, GeneralizedArcLength(alpha=1.0, beta=0.5), converged=residual_norm(1e-3))
-stepperARC = IncrementalSolver(solverARC)
+solverARC = IterativeSolver(spring, GeneralizedArcLength(alpha=1.0, beta=0.5), converged=residual_norm(1e-12))
+stepperARC = IncrementalSolver(solverARC, maximum_increments=2000)
 
 # initial point, i.e. x0 = y0 = 0, x1 = 1 and L0 = 0, constant load of 1e-3 to force the buckling upwards
-point = Point(qp=np.array([0, 0, 1, 0, 1]), ff=np.array([1e-3]))
+point = Point(qp=np.array([0, 0, 1, 0, 1]), ff=np.array([1e-2]))
 solution, tries = stepperNR(point + solverNR([point])[0], Controller(0.05)) # solve
 
 # get solution and take the last point to use as first point in subsequent analysis
