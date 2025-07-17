@@ -9,8 +9,11 @@ from utils import Structure, Point
 from controllers import Adaptive
 from criteria import residual_norm
 
+"""
+Analysis of single-DOF inclined truss with snapthrough behaviour.
+"""
 
-class TrussProblem:
+class InclinedTruss:
     def __init__(self, theta0: float = pi/3):
         self.theta0 = theta0
 
@@ -25,25 +28,29 @@ class TrussProblem:
 
 
 if __name__ == "__main__":
-    truss_problem = TrussProblem(pi/2.1)
 
-    problem = Structure(truss_problem, ixf=[0], ff=np.array([1]))
+    # first create a truss with angle theta
+    truss = InclinedTruss(pi / 3)
 
+    # add boundary and loading conditions
+    # in this case we indicate the first index if free and corresponding load magnitude is 1
+    # it will find out by itself that this is the only DOF
+    problem = Structure(truss, ixf=[0], ff=np.array([1]))
+
+    # create an iterative solver with some constraint and convergence criterium
     solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-10))
 
-    stepper = IncrementalSolver(solver)
-
+    # create initial point and provide initial position and load
     p0 = Point(qf=np.zeros(1), ff=np.zeros(1))
 
+    # create a controller that defines the adaptive stepping
     controller = Adaptive(0.05, max=0.5, incr=1.2, decr=0.2, min=0.001)
 
-    solution, tries = stepper(p0, controller)
+    # run the stepper given initial point p0 and controller
+    stepper = IncrementalSolver(solver)
+    solution, _ = stepper(p0, controller)
 
-    # PLOTTING
-
-    for a in tries:
-        plt.plot([i.qf for i in a],[i.ff for i in a], 'ko--', alpha=0.1)
-
+    # plot position vs force
     plt.plot([i.qf for i in solution], [i.ff for i in solution], 'ko-')
 
     plt.show()

@@ -5,7 +5,7 @@ from controllers import Controller, Adaptive
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 from copy import deepcopy
-from spring_defs import SpringL0K
+from spring import SpringL0K
 from criteria import residual_norm
 
 

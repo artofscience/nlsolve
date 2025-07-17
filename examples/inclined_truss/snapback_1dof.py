@@ -9,8 +9,12 @@ from utils import Structure, Point
 from controllers import Adaptive
 from criteria import residual_norm
 
-class InvolvedTrussProblem(Structure):
-    def __init__(self, w: float = 0.25, theta0: float = pi/3):
+"""
+Analysis of two-DOF inclined truss with severe snapback behaviour.
+"""
+
+class InclinedTrussSnapback:
+    def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
         self.w = w
         self.theta0 = theta0
 
@@ -29,9 +33,9 @@ class InvolvedTrussProblem(Structure):
 
 
 if __name__ == "__main__":
-    truss_problem = InvolvedTrussProblem()
+    truss = InclinedTrussSnapback()
 
-    problem = Structure(truss_problem, ixf=[0, 1], ff=np.array([0, 0.5]))
+    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
 
     solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 
@@ -43,8 +47,8 @@ if __name__ == "__main__":
 
     solution = stepper(p0, controller)[0]
 
-    # PLOTTING
 
+    # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
     plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
     plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
 
