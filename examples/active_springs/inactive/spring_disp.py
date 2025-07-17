@@ -3,8 +3,14 @@ import numpy as np
 
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
+from spring import Spring
 
-from spring_defs import Spring
+""""
+Analysis of a simple spring with fixed stiffness k and rest length l0.
+
+x1 is prescribed such that it moves from 1 to 2
+
+"""
 
 # dofs = [x0, y0, x1, y1]
 ixp = [0, 1, 2, 3]
@@ -28,7 +34,6 @@ p0 = Point(qp=np.array([0, 0, 1, 0]))
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
 
-# print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 steppah = IncrementalSolver(solver)
 

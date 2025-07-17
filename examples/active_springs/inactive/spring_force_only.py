@@ -4,7 +4,13 @@ import numpy as np
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 
-from spring_defs import Spring
+from spring import Spring
+
+""""
+Analysis of a simple spring loaded in compression 
+operating on a reduced version of the model
+to show the structure can work with only free DOFs
+"""
 
 class SpringReduced:
     def __init__(self, spring: Spring):

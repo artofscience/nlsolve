@@ -6,7 +6,7 @@ from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
-from spring_defs import SpringT
+from spring import SpringT
 
 class SpringAssembly:
     def __init__(self):
@@ -63,7 +63,7 @@ dp0 = solver([p0])[0]
 
 alpha, beta = 1, 1
 solver_arc = IterativeSolver(structure, GeneralizedArcLength(alpha=alpha, beta=beta))
-steppah = IncrementalSolver(solver_arc, maximum_increments=1000)
+steppah = IncrementalSolver(solver_arc, maximum_increments=20)
 
 controller = Adaptive(value=0.001, min=0.00001, max=0.1, decr=0.1, incr=1.5)
 # controller = Controller(0.001)
@@ -85,7 +85,6 @@ plt.ylabel('Position')
 plt.legend()
 plt.grid()
 
-np.savetxt('y1.csv', [i.qf[0] for i in solution], delimiter=',')
 
 plt.show()
 

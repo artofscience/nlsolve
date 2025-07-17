@@ -1,21 +1,32 @@
 from matplotlib import pyplot as plt
 import numpy as np
-from logging import DEBUG, INFO, ERROR, WARNING, CRITICAL
+from logging import ERROR
 
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
-from controllers import Adaptive
-from operator import lt, le, ge
-from criteria import CriterionX, CriterionXH, CriterionY, CriterionYH, CriterionP
+from operator import le, ge
+from criteria import CriterionP
+
+from spring import Spring
 
 
-from spring_defs import Spring
+""""
+Analysis of a simple spring with fixed stiffness k and rest length l0.
+
+y1 is free and loaded form magnitude 0.0 to 1
+initial point is out of equilibrium (length does not equal restlength)
+hence we first ensure it is in equilibrium
+given x1 = 1.0 and l0 = sqrt(2) we guess y1 approx 0.9 
+
+Note we use some user-defined criteria to define convergence
+
+"""
 
 # dofs = [x0, y0, x1, y1]
 ixp, ixf = [0, 1, 2], [3]
 
 # spring parameters
-k, l0 = 1.0, 1.0
+k, l0 = 1.0, np.sqrt(2)
 
 # setup loading conditions
 qp, ff = np.zeros(3), np.ones(1)
@@ -28,7 +39,7 @@ solver = IterativeSolver(spring)
 
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 0]), qf=np.array([2]))
+p0 = Point(qp=np.array([0, 0, 1.0]), qf=np.array([0.9]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -36,7 +47,7 @@ dp0 = solver([p0])[0]
 # get equilibrium point
 p0eq = p0 + dp0
 
-print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
+print("Given L0 = {}, y_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 
 # Setup termination criterium for the stepper.
