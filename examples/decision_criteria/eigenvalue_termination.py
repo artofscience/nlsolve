@@ -8,7 +8,7 @@ from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 from controllers import Adaptive
 from criteria import residual_norm
-from decision_criteria import EigenvalueTermination
+from decision_criteria import EigenvalueTermination, LoadTermination
 
 """
 Analysis of two-DOF inclined truss with severe snapback behaviour.
@@ -40,19 +40,24 @@ if __name__ == "__main__":
 
     solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 
-    decision = EigenvalueTermination(-0.2, 0.0001)
-    stepper = IncrementalSolver(solver, terminated=decision)
+    stepper = IncrementalSolver(solver)
 
     p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 
     controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
-    solution = stepper(p0, controller)[0]
+    # first solve for load termination
+    decision = LoadTermination(1.0, 0.01)
 
-    # PLOTTING
-
-    # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
+    solution = stepper(p0, controller, decision)[0]
     plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
     plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
+
+    # then solve for eigenvalue termination
+    decision = EigenvalueTermination(-0.2, 0.01)
+
+    solution = stepper(p0, controller, decision)[0]
+    plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ro-')
+    plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'yo-')
 
     plt.show()

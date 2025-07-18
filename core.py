@@ -142,8 +142,7 @@ class IncrementalSolver:
 
     def __init__(self, solution_method: IterativeSolver,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
-                 maximum_increments: int = 1000,
-                 terminated = None) -> None:
+                 maximum_increments: int = 1000) -> None:
         """
         Initialization of the incremental solver.
 
@@ -159,13 +158,12 @@ class IncrementalSolver:
         self.maximum_increments: int = maximum_increments
         # self.terminated = terminated if terminated is not None else (
         #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
-        self.terminated = terminated if terminated is not None else LoadTermination()
         self.__name__ = name
 
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
-    def __call__(self, p: Point, controller: Controller = None) -> Tuple[List[Point], List[List[Point]]]:
+    def __call__(self, p: Point, controller: Controller = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -174,6 +172,8 @@ class IncrementalSolver:
         :param controller: controller of the pseud-time step size
         :return: a list of equilibrium solutions (Points), and a list of lists of attempted points
         """
+        self.terminated = terminated if terminated is not None else LoadTermination()
+
         controller = controller if controller is not None else Controller(0.1)
 
         self.logger.debug("Invoking incremental solver")

@@ -37,6 +37,4 @@ class EigenvalueTermination(DecisionCriterium):
         super().__init__(threshold, lt, nmargin=margin)
 
     def value(self, problem: Structure, p: Point):
-        eig = min(eigvals(problem.kff(p)))
-        print(eig)
-        return eig
+        return min(eigvals(problem.kff(p)))
