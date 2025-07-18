@@ -9,56 +9,31 @@ from utils import Structure, Point
 from controllers import Adaptive
 from criteria import residual_norm
 from decision_criteria import EigenvalueTermination, LoadTermination
+from examples.inclined_truss_snapback import InclinedTrussSnapback
 
-"""
-Analysis of two-DOF inclined truss with severe snapback behaviour.
-"""
+problem = Structure(InclinedTrussSnapback(), ixf=[0, 1], ff=np.array([0, 0.5]))
 
-class InclinedTrussSnapback:
-    def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
-        self.w = w
-        self.theta0 = theta0
+solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 
-    def force(self, a):
-        a1, a2 = a[0], a[1]
-        f1 = (1 / np.sqrt(1 - 2 * a1 * sin(self.theta0) + a1 ** 2) - 1) * (
-                sin(self.theta0) - a1) - self.w * (a2 - a1)
-        return np.array([f1, self.w * (a2 - a1)])
+stepper = IncrementalSolver(solver)
 
-    def jacobian(self, a):
-        a1 = a[0]
-        df1da1 = self.w - 1 / (a1 ** 2 - 2 * sin(self.theta0) * a1 + 1) ** (1 / 2) + (
-                (a1 - sin(self.theta0)) * (2 * a1 - 2 * sin(self.theta0))) / (
-                         2 * (a1 ** 2 - 2 * sin(self.theta0) * a1 + 1) ** (3 / 2)) + 1
-        return np.array([[df1da1, -self.w], [-self.w, self.w]], dtype=float)
+p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 
+controller = Adaptive(0.5, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
-if __name__ == "__main__":
-    truss = InclinedTrussSnapback()
+# first solve for load termination
+decision = LoadTermination(1.0, 0.01)
 
-    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
+# stepper.controller_reset = False
+solution = stepper(p0, controller, decision)[0]
+plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
+plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
 
-    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
+# then solve for eigenvalue termination
+decision = EigenvalueTermination(-0.2, 0.01)
 
-    stepper = IncrementalSolver(solver)
+solution = stepper(p0, controller, decision)[0]
+plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ro-')
+plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'yo-')
 
-    p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
-
-    controller = Adaptive(0.5, max=0.5, incr=1.2, decr=0.1, min=0.0001)
-
-    # first solve for load termination
-    decision = LoadTermination(1.0, 0.01)
-
-    # stepper.controller_reset = False
-    solution = stepper(p0, controller, decision)[0]
-    plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
-    plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
-
-    # then solve for eigenvalue termination
-    decision = EigenvalueTermination(-0.2, 0.01)
-
-    solution = stepper(p0, controller, decision)[0]
-    plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ro-')
-    plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'yo-')
-
-    plt.show()
+plt.show()
