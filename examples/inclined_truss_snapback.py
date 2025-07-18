@@ -13,7 +13,7 @@ from criteria import residual_norm
 Analysis of two-DOF inclined truss with severe snapback behaviour.
 """
 
-class InclinedTrussSnapback:
+class InclinedTrussSnapback(Structure):
     def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
         self.w = w
         self.theta0 = theta0
@@ -47,6 +47,7 @@ if __name__ == "__main__":
 
     solution = stepper(p0, controller)[0]
 
+    # PLOTTING
 
     # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
     plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
