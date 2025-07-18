@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 from utils import Point, Structure
 import logging
 import operator
-from operator import lt
+from operator import lt, ge
+from typing import List, Tuple
+
 
 from logger import CustomFormatter, create_logger
 from typing import Callable
@@ -12,6 +14,8 @@ import numpy as np
 
 class CounterError(Exception):
     pass
+
+
 
 class Counter:
     """Enforces a maximum number of iterations.
@@ -54,16 +58,6 @@ class CriterionBase(ABC):
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
-    @abstractmethod
-    def __call__(self, problem: Structure, p: Point, ddy: float) -> bool:
-        """
-
-        :param problem: the (non)linear function to be solved
-        :param p: the state (Point)
-        :param ddy: the change in load by predictor or corrector
-        :return: bool
-        """
-        pass
 
     def __and__(self, other):
         """Return a combined ``Criteria`` from the ``and (&)`` operation."""

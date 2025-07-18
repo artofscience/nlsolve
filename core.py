@@ -22,6 +22,7 @@ class DivergenceError(Exception):
 import logging
 
 from criteria import Counter, CriterionP, residual_norm, divergence_default
+from decision_criteria import LoadTermination
 
 
 class IterativeSolver:
@@ -153,9 +154,9 @@ class IncrementalSolver:
         """
         self.solution_method = solution_method
         self.maximum_increments: int = maximum_increments
-        self.terminated = terminated if terminated is not None else (
-                CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
-
+        # self.terminated = terminated if terminated is not None else (
+        #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
+        self.terminated = terminated if terminated is not None else LoadTermination()
         self.__name__ = name
 
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
@@ -185,12 +186,8 @@ class IncrementalSolver:
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
         try:
-            # currently very simple termination criteria (load proportionality parameter termination criteria)
-            # ideally terminated at p.y == 1.0
 
             while True:
-                if self.terminated(self.solution_method.nlf, p, 1.0):
-                    break
 
                 incremental_counter += 1
 
@@ -203,7 +200,12 @@ class IncrementalSolver:
                         self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
                         dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
                         iterative_tries += iterates
-                        break
+                        self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
+                        if self.terminated.exceed and not self.terminated.accept:
+                            raise ValueError("Termination criteria exceeded: go back", iterates)
+                        else:
+                            break
+
                     except (ValueError, CounterError, DivergenceError) as error:
                         self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                         iterative_tries += error.args[1]
@@ -219,8 +221,6 @@ class IncrementalSolver:
 
                 equilibrium_solutions.append(p)  # append equilibrium solution to storage
 
-                controller.increase()  # increase the characteristic length of the constraint for next iterate
-
                 iterative_counter += iterates  # add iterates of current search to counter
                 tries_storage.append(tries)  # store tries of current increment to storage
 
@@ -230,10 +230,15 @@ class IncrementalSolver:
                 self.logger.info("Total number of succesful increments: %d" % incremental_counter)
                 self.logger.debug("Total number of effective iterates: %d" % iterative_counter)
 
+                if self.terminated.accept:
+                    break
+
                 # terminate algorithm if too many increments are used
                 if incremental_counter >= self.maximum_increments:
                     raise CounterError(
                         "Maximum number of increments %2d >= %2d" % (incremental_counter, self.maximum_increments))
+
+                controller.increase()  # increase the characteristic length of the constraint for next iterate
 
         except CounterError as error:
             self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
