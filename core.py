@@ -142,7 +142,7 @@ class IncrementalSolver:
 
     def __init__(self, solution_method: IterativeSolver,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
-                 maximum_increments: int = 1000) -> None:
+                 maximum_increments: int = 1000, controller_reset=True) -> None:
         """
         Initialization of the incremental solver.
 
@@ -156,6 +156,7 @@ class IncrementalSolver:
         """
         self.solution_method = solution_method
         self.maximum_increments: int = maximum_increments
+        self.controller_reset = controller_reset
         # self.terminated = terminated if terminated is not None else (
         #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
         self.__name__ = name
@@ -246,10 +247,13 @@ class IncrementalSolver:
             # terminate algorithm if too many increments are used
             if incremental_counter >= self.maximum_increments:
                 self.logger.error("Maximum number of increments %2d >= %2d".format(incremental_counter, self.maximum_increments))
-                return equilibrium_solutions, tries_storage
+                break
 
             controller.increase()  # increase the characteristic length of the constraint for next iterate
 
+        # reset controller for future use of the incremental solver with same controller
+        if self.controller_reset:
+            controller.reset()
 
         return equilibrium_solutions, tries_storage
 

@@ -44,11 +44,12 @@ if __name__ == "__main__":
 
     p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 
-    controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
+    controller = Adaptive(0.5, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
     # first solve for load termination
     decision = LoadTermination(1.0, 0.01)
 
+    # stepper.controller_reset = False
     solution = stepper(p0, controller, decision)[0]
     plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
     plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')

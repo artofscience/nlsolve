@@ -15,6 +15,7 @@ class Controller:
 
     def __init__(self, value: float = 0.1, name: str = None, logging_level: int = logging.DEBUG) -> None:
         self.value = value
+        self.value0 = value
 
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
@@ -27,6 +28,8 @@ class Controller:
     def decrease(self) -> None:
         self.logger.warning("Controller decrease invoked, but value remains unchanged to %2.2f" % self.value)
 
+    def reset(self) -> None:
+        self.value = self.value0
 
 
 class Adaptive(Controller):
