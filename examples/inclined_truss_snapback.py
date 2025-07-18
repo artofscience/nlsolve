@@ -13,7 +13,7 @@ from criteria import residual_norm
 Analysis of two-DOF inclined truss with severe snapback behaviour.
 """
 
-class InclinedTrussSnapback(Structure):
+class InclinedTrussSnapback:
     def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
         self.w = w
         self.theta0 = theta0
