@@ -18,6 +18,9 @@ class CounterError(Exception):
 class DivergenceError(Exception):
     pass
 
+class TerminationError(Exception):
+    pass
+
 
 import logging
 
@@ -202,7 +205,7 @@ class IncrementalSolver:
                         iterative_tries += iterates
                         self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
                         if self.terminated.exceed and not self.terminated.accept:
-                            raise ValueError("Termination criteria exceeded: go back", iterates)
+                            raise TerminationError("Termination criteria exceeded: go back", iterates)
                         else:
                             break
 
@@ -212,6 +215,14 @@ class IncrementalSolver:
                         self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
                         self.logger.warning("Decrease characteristic length of constraint equation and try again!")
                         controller.decrease() # decrease the characteristic length of the constraint
+
+                    except (TerminationError) as error:
+                        iterative_tries += error.args[1]
+                        self.logger.warning("Succesful step in %d iterates" % error.args[1])
+                        self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
+                        self.logger.warning("Decrease characteristic length of constraint equation and try again!")
+                        controller.decrease() # decrease the characteristic length of the constraint
+
 
                 p = p + dp  # add incremental state to current state (if equilibrium found)
 
