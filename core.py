@@ -188,72 +188,68 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
-        try:
+        while True:
 
+            incremental_counter += 1
+
+            print("")
+
+            # invoke solution method to find incremental state
             while True:
+                try:
+                    incremental_tries += 1
+                    self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
+                    dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
+                    iterative_tries += iterates
+                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
+                    if self.terminated.exceed and not self.terminated.accept:
+                        raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
+                    else:
+                        break
 
-                incremental_counter += 1
+                except (ValueError, CounterError, DivergenceError) as error:
+                    self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+                    iterative_tries += error.args[1]
+                    self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
+                    self.logger.warning("Decrease characteristic length of constraint equation and try again!")
+                    controller.decrease() # decrease the characteristic length of the constraint
 
-                print("")
-
-                # invoke solution method to find incremental state
-                while True:
-                    try:
-                        incremental_tries += 1
-                        self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
-                        dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
-                        iterative_tries += iterates
-                        self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
-                        if self.terminated.exceed and not self.terminated.accept:
-                            raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
-                        else:
-                            break
-
-                    except (ValueError, CounterError, DivergenceError) as error:
-                        self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
-                        iterative_tries += error.args[1]
-                        self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
-                        self.logger.warning("Decrease characteristic length of constraint equation and try again!")
-                        controller.decrease() # decrease the characteristic length of the constraint
-
-                    except (TerminationError) as error:
-                        iterative_tries += error.args[1]
-                        self.logger.warning("Succesful step in %d iterates" % error.args[1])
-                        self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
-                        self.logger.warning("Decrease characteristic length of constraint equation and try again!")
-                        controller.decrease() # decrease the characteristic length of the constraint
+                except (TerminationError) as error:
+                    iterative_tries += error.args[1]
+                    self.logger.warning("Succesful step in %d iterates" % error.args[1])
+                    self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
+                    self.logger.warning("Decrease characteristic length of constraint equation and try again!")
+                    controller.decrease() # decrease the characteristic length of the constraint
 
 
-                p = p + dp  # add incremental state to current state (if equilibrium found)
+            p = p + dp  # add incremental state to current state (if equilibrium found)
 
-                self.logger.debug(
-                    "New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (
-                        dp.y, iterates, p.y))
+            self.logger.debug(
+                "New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (
+                    dp.y, iterates, p.y))
 
-                equilibrium_solutions.append(p)  # append equilibrium solution to storage
+            equilibrium_solutions.append(p)  # append equilibrium solution to storage
 
-                iterative_counter += iterates  # add iterates of current search to counter
-                tries_storage.append(tries)  # store tries of current increment to storage
+            iterative_counter += iterates  # add iterates of current search to counter
+            tries_storage.append(tries)  # store tries of current increment to storage
 
-                self.logger.info("Total number of increments: %d" % incremental_tries)
-                self.logger.debug("Total number of iterates: %d" % iterative_tries)
+            self.logger.info("Total number of increments: %d" % incremental_tries)
+            self.logger.debug("Total number of iterates: %d" % iterative_tries)
 
-                self.logger.info("Total number of succesful increments: %d" % incremental_counter)
-                self.logger.debug("Total number of effective iterates: %d" % iterative_counter)
+            self.logger.info("Total number of succesful increments: %d" % incremental_counter)
+            self.logger.debug("Total number of effective iterates: %d" % iterative_counter)
 
-                if self.terminated.accept:
-                    break
+            if self.terminated.accept:
+                self.logger.info("Termination criteria satisfied: stepper aborted.")
+                break
 
-                # terminate algorithm if too many increments are used
-                if incremental_counter >= self.maximum_increments:
-                    raise CounterError(
-                        "Maximum number of increments %2d >= %2d" % (incremental_counter, self.maximum_increments))
+            # terminate algorithm if too many increments are used
+            if incremental_counter >= self.maximum_increments:
+                self.logger.error("Maximum number of increments %2d >= %2d".format(incremental_counter, self.maximum_increments))
+                return equilibrium_solutions, tries_storage
 
-                controller.increase()  # increase the characteristic length of the constraint for next iterate
+            controller.increase()  # increase the characteristic length of the constraint for next iterate
 
-        except CounterError as error:
-            self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
-            return equilibrium_solutions, tries_storage
 
         return equilibrium_solutions, tries_storage
 
