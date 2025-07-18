@@ -205,7 +205,7 @@ class IncrementalSolver:
                         iterative_tries += iterates
                         self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
                         if self.terminated.exceed and not self.terminated.accept:
-                            raise TerminationError("Threshold exceeded: reduce step size!", iterates)
+                            raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
                         else:
                             break
 
