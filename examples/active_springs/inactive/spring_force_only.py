@@ -24,8 +24,6 @@ class SpringReduced:
         jacobian = self.spring.jacobian(np.array([0.0, 0.0, q[0], 0.0]))
         return np.array([jacobian[[2], [2]]])
 
-springetje = Spring()
-spring = SpringReduced(springetje)
 
 # dofs = [x0, y0, x1, y1]
 ixf = [0]

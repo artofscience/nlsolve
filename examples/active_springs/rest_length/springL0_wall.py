@@ -4,7 +4,7 @@ from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 from criteria import residual_norm
 
-from spring_defs import SpringL0
+from spring import SpringL0
 
 
 fig, ax1 = plt.subplots()

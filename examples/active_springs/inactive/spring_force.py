@@ -50,20 +50,13 @@ p0eq = p0 + dp0
 print("Given L0 = {}, y_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 
-# Setup termination criterium for the stepper.
-# Let's terminate when lambda < -1 OR lambda > 1
-# CriterionP works direction on a point object
-stepper_c1 = CriterionP(lambda p: p.y, ge, 1.0, name="Stepper_c1")
-stepper_c2 = CriterionP(lambda p: p.y, le, -1.0, name="Stepper_c2")
-termination_criterium = stepper_c1 | stepper_c2
-termination_criterium.logger.name = "stepper_ter_c"
+
 
 steppah = IncrementalSolver(
     solution_method = solver,
     name = "Stepper",
     logging_level = ERROR,
-    maximum_increments= 15,
-    terminated= termination_criterium)
+    maximum_increments= 15)
 
 
 # solve problem from equilibrium point
