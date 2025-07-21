@@ -141,6 +141,8 @@ class IncrementalSolver:
     """
 
     def __init__(self, solution_method: IterativeSolver,
+                 p: Point = None,
+                 controller: Controller = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000, controller_reset=True) -> None:
         """
@@ -156,7 +158,9 @@ class IncrementalSolver:
         """
         self.solution_method = solution_method
         self.maximum_increments: int = maximum_increments
+        self.controller = controller if controller is not None else Controller(0.1)
         self.controller_reset = controller_reset
+        self.p0 = p
         # self.terminated = terminated if terminated is not None else (
         #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
         self.__name__ = name
@@ -164,7 +168,7 @@ class IncrementalSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
-    def __call__(self, p: Point, controller: Controller = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
+    def __call__(self, p: Point = None, controller: Controller = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -175,7 +179,10 @@ class IncrementalSolver:
         """
         self.terminated = terminated if terminated is not None else LoadTermination()
 
-        controller = controller if controller is not None else Controller(0.1)
+        if controller is not None:
+            self.controller = controller
+
+        p = 1.0 * self.p0 if p is None else p
 
         self.logger.debug("Invoking incremental solver")
 
@@ -200,7 +207,7 @@ class IncrementalSolver:
                 try:
                     incremental_tries += 1
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
-                    dp, iterates, tries = self.solution_method(equilibrium_solutions, controller.value)
+                    dp, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
                     iterative_tries += iterates
                     self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
                     if self.terminated.exceed and not self.terminated.accept:
@@ -213,14 +220,14 @@ class IncrementalSolver:
                     iterative_tries += error.args[1]
                     self.logger.error("Iterative solver aborted after %d iterates" % error.args[1])
                     self.logger.warning("Decrease characteristic length of constraint equation and try again!")
-                    controller.decrease() # decrease the characteristic length of the constraint
+                    self.controller.decrease() # decrease the characteristic length of the constraint
 
                 except (TerminationError) as error:
                     iterative_tries += error.args[1]
                     self.logger.warning("Succesful step in %d iterates" % error.args[1])
                     self.logger.warning("{}: {}".format(type(error).__name__, error.args[0]))
                     self.logger.warning("Decrease characteristic length of constraint equation and try again!")
-                    controller.decrease() # decrease the characteristic length of the constraint
+                    self.controller.decrease() # decrease the characteristic length of the constraint
 
 
             p = p + dp  # add incremental state to current state (if equilibrium found)
@@ -249,11 +256,11 @@ class IncrementalSolver:
                 self.logger.error("Maximum number of increments %2d >= %2d".format(incremental_counter, self.maximum_increments))
                 break
 
-            controller.increase()  # increase the characteristic length of the constraint for next iterate
+            self.controller.increase()  # increase the characteristic length of the constraint for next iterate
 
         # reset controller for future use of the incremental solver with same controller
         if self.controller_reset:
-            controller.reset()
+            self.controller.reset()
 
         return equilibrium_solutions, tries_storage
 
