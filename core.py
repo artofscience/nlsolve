@@ -168,7 +168,7 @@ class IncrementalSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
-    def __call__(self, p: Point = None, controller: Controller = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
+    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -181,6 +181,9 @@ class IncrementalSolver:
 
         if controller is not None:
             self.controller = controller
+
+        if constraint is not None:
+            self.solution_method.constraint = constraint
 
         p = 1.0 * self.p0 if p is None else p
 

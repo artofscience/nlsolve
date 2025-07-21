@@ -21,22 +21,14 @@ stepper = IncrementalSolver(solver, p0, controller)
 solution0 = stepper()[0]
 
 # STEP 1: ARCLENGTH WITH LOAD TERMINATION
-solver.constraint = GeneralizedArcLength()
-solution1 = stepper()[0]
+solution1 = stepper(constraint=GeneralizedArcLength())[0]
 
 # STEP 2: ARCLENGTH WITH EIGENVALUE TERMINATION
-decision = EigenvalueTermination(-0.4, 0.01)
-solution2 = stepper(terminated=decision)[0]
+solution2 = stepper(terminated=EigenvalueTermination(-0.4, 0.01))[0]
 
 # STEP 3: NR WITH LOAD TERMINATION
 # STARTING FROM SOLUTION2
-
-# change constraint function back to NR
-solver.constraint = NewtonRaphson()
-
-# change termination decision criterium
-decision = LoadTermination(1.0, 0.1)
-solution3 = stepper(solution2[-1], terminated=decision)[0]
+solution3 = stepper(solution2[-1], constraint=NewtonRaphson(), terminated=LoadTermination(1.0, 0.1))[0]
 
 ### PLOTTING
 
