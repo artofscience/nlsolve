@@ -185,7 +185,7 @@ class IncrementalSolver:
         if constraint is not None:
             self.solution_method.constraint = constraint
 
-        p = 1.0 * self.p0 if p is None else p
+        p = self.p0 if p is None else p
 
         self.logger.debug("Invoking incremental solver")
 

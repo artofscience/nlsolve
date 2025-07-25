@@ -8,7 +8,7 @@ from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from decision_criteria import EigenvalueTermination, LoadTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
-from utils import Structure, Point
+from utils import Structure, Point, plotter
 
 problem = Structure(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
 controller = Adaptive(0.01, max=0.5, incr=1.2, decr=0.1, min=0.0001)
@@ -30,18 +30,17 @@ solution2 = stepper(terminated=EigenvalueTermination(-0.4, 0.01))[0]
 solution3 = stepper(solution2[-1], constraint=NewtonRaphson(), terminated=LoadTermination(1.0, 0.1))[0]
 
 ### PLOTTING
+plotter(solution0, 0, 1, 'ko--')
+plotter(solution0, 1, 1, 'ko--')
 
-plt.plot([i.qf[0] for i in solution0], [i.ff[1] for i in solution0], 'ko--')
-plt.plot([i.qf[1] for i in solution0], [i.ff[1] for i in solution0], 'bo--')
+plotter(solution1, 0, 1, 'ko-')
+plotter(solution1, 1, 1, 'ko-')
 
-plt.plot([i.qf[0] for i in solution1], [i.ff[1] for i in solution1], 'ko-')
-plt.plot([i.qf[1] for i in solution1], [i.ff[1] for i in solution1], 'bo-')
+plotter(solution2, 0, 1, 'ro-')
+plotter(solution2, 1, 1, 'go-')
 
-plt.plot([i.qf[0] for i in solution2], [i.ff[1] for i in solution2], 'ro-')
-plt.plot([i.qf[1] for i in solution2], [i.ff[1] for i in solution2], 'go-')
-
-plt.plot([i.qf[0] for i in solution3], [i.ff[1] for i in solution3], 'co--')
-plt.plot([i.qf[1] for i in solution3], [i.ff[1] for i in solution3], 'yo--')
+plotter(solution3, 0, 1, 'co--')
+plotter(solution3, 1, 1, 'yo--')
 
 ### END POTTING
 

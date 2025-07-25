@@ -5,6 +5,10 @@ from copy import deepcopy
 
 import numpy as np
 State = np.ndarray[float] | None
+from matplotlib import pyplot as plt
+
+def plotter(solution, idq, idf, c='k0--'):
+    plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution], c)
 
 
 class Structure(ABC):
