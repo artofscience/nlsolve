@@ -4,7 +4,7 @@ from typing import Callable
 from utils import Structure, Point
 from numpy.linalg import eigvals
 from abc import ABC, abstractmethod
-from operator import lt
+from operator import lt, gt
 
 class DecisionCriterium(ABC):
     def __init__(self, threshold: float = 1.0, operator: Callable = ge, nmargin: float = 0.0, pmargin: float = 0.0):
@@ -38,3 +38,22 @@ class EigenvalueTermination(DecisionCriterium):
 
     def value(self, problem: Structure, p: Point):
         return min(eigvals(problem.kff(p)))
+
+class EigenvalueChangeTermination:
+    def __init__(self, margin: float = 0.001):
+        self.margin = margin
+        self.change = False
+
+    def __call__(self, problem: Structure, p: List[Point], dp):
+        point = p[-1] + dp
+
+        mu0 = sum(eigvals(problem.kff(p[-1])) < 0)
+
+        eigs = eigvals(problem.kff(point))
+        mu1 = sum(eigs < 0)
+
+        value = abs(min(eigs))
+
+        self.change = (mu0 != mu1)
+        self.exceed = self.change and value > self.margin
+        self.accept = self.change and value < self.margin
