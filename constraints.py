@@ -84,9 +84,10 @@ class NewtonRaphson(Constraint):
 
 
 class ArcLength(Constraint):
-    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0) -> None:
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0, direction: bool = True) -> None:
         super().__init__(dl, name, logging_level)
         self.beta = beta
+        self.direction = direction
 
     def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
@@ -159,7 +160,11 @@ class ArcLength(Constraint):
 
     def select_root_predictor(self, nlf: Structure, p: Point, sol: List[Point], cps: List[Point]) -> float:
         if p.y == 0:
-            return cps[0].y if cps[0].y > cps[1].y else cps[1].y
+            if self.direction:
+                return cps[0].y if cps[0].y > cps[1].y else cps[1].y
+            else:
+                return cps[1].y if cps[0].y > cps[1].y else cps[0].y
+
 
         else:
             if nlf.nf:
