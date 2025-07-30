@@ -7,7 +7,7 @@ import numpy as np
 State = np.ndarray[float] | None
 from matplotlib import pyplot as plt
 
-def plotter(solution, idq, idf, c='k0--'):
+def plotter(solution, idq, idf, c='ko--'):
     plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution], c)
 
 def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
@@ -106,6 +106,9 @@ class Problem(ABC):
             f[self.ixp] = fp
         return Point(q, f)
 
+    def empty_point(self):
+        return Point(np.zeros(self.n), np.zeros(self.n))
+
     def qf(self, p):
         return p.q[self.ixf]
 
@@ -122,8 +125,8 @@ class Problem(ABC):
 
 class Point:
     def __init__(self, q: State = 0.0, f: State = 0.0) -> None:
-        self.q = q
-        self.f = f
+        self.q = self.make_float(q)
+        self.f = self.make_float(f)
 
     def __iadd__(self, other: Point) -> Point:
         """
@@ -161,115 +164,6 @@ class Point:
         out.f *= other
         return out
 
-# class Point:
-#     def __init__(self, qf: State = 0.0, qp: State = 0.0, ff: State = 0.0, fp: State = 0.0, y: float = 0.0) -> None:
-#         """
-#         Initialize an (equilibrium) point given it's load and corresponding motion in partitioned format.
-#
-#         :param qf: free / unknown motion
-#         :param qp: prescribed motion
-#         :param ff: external / applied load
-#         :param fp: reaction load
-#         :param y: load proportionality parameter
-#         """
-#         self.qf = self.make_float(qf)
-#         self.qp = self.make_float(qp)
-#         self.ff = self.make_float(ff)
-#         self.fp = self.make_float(fp)
-#         self.y = float(y)
-#
-#     def print(self):
-#         print("ff = {}, qp = {}, qf = {}, fp = {}, y = {}".format(self.ff, self.qp, self.qf, self.fp, self.y))
-#
-#     @staticmethod
-#     def make_float(x):
-#         return x.astype(float) if type(x) is np.ndarray else x
-#
-#     @staticmethod
-#     def combine(xf: np.ndarray | float, xp: np.ndarray | float) -> State:
-#         """
-#         Combines (append) the arrays corresponding to free and prescribed degrees of freedom.
-#
-#         :param xf: array corresponding to free dofs
-#         :param xp: array corresponding to prescribed dofs
-#         :return: combined array
-#         """
-#         x = np.array([])
-#         if type(xf) is np.ndarray:
-#             x = np.append(x, xf)
-#         if type(xp) is np.ndarray:
-#             x = np.append(x, xp)
-#         return x
-#
-#     @property
-#     def f(self) -> State:
-#         """
-#         Retrieve load at state p
-#
-#         :param p: state
-#         :return: load
-#         """
-#         return self.combine(self.ff, self.fp)
-#
-#     @property
-#     def q(self) -> State:
-#         """
-#         Retrieve motion at state p
-#
-#         :param p: state
-#         :return: motion
-#         """
-#         return self.combine(self.qf, self.qp)
-#
-#     def __iadd__(self, other: Point) -> Point:
-#         """
-#         Adds the content of another Point to this Point.
-#
-#         :param other: another Point object
-#         :return: sum of Points
-#         """
-#         self.qf += other.qf
-#         self.qp += other.qp
-#         self.ff += other.ff
-#         self.fp += other.fp
-#         self.y += other.y
-#         return self
-#
-#     def __rmul__(self, other: Point) -> Point:
-#         """
-#         Multiplications of two point entries.
-#
-#         Note rmul makes a deepcopy of itself!
-#
-#         :param other: another Point
-#         :return: a copy of itself with the entries multiplied by the other Points entries
-#         """
-#         out = deepcopy(self)
-#         out.qf *= other
-#         out.qp *= other
-#         out.ff *= other
-#         out.fp *= other
-#         out.y *= other
-#         return out
-#
-#     def __add__(self, other: Point) -> Point:
-#         """
-#         Addition of two points, returing a third Point.
-#
-#         :param other: another Point object
-#         :return: a third Point object that is the addition
-#         """
-#         out = deepcopy(Point(self.qf, self.qp, self.ff, self.fp, self.y))
-#         out += other
-#         return out
-#
-#     def __sub__(self, other: Point) -> Point:
-#         """
-#         Substraction of two points, returing a third Point.
-#
-#         :param other: another Point object
-#         :return: a third Point object that is the substraction
-#         """
-#         out = deepcopy(Point(self.qf, self.qp, self.ff, self.fp, self.y))
-#         out -= other
-#         return out
+    @staticmethod
+    def make_float(x):
+        return x.astype(float) if type(x) is np.ndarray else x

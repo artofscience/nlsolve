@@ -12,9 +12,8 @@ from utils import Problem, Point, plotter
 
 problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
 controller = Adaptive(0.01, max=0.5, incr=1.2, decr=0.1, min=0.0001)
-p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 solver = IterativeSolver(problem)
-stepper = IncrementalSolver(solver, p0, controller)
+stepper = IncrementalSolver(solver, controller)
 
 # STEP 0: NR WITH LOAD TERMINATION
 solution0 = stepper()[0]

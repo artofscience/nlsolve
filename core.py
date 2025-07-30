@@ -145,8 +145,8 @@ class IncrementalSolver:
     """
 
     def __init__(self, solution_method: IterativeSolver,
-                 p: Point = None,
                  controller: Controller = None,
+                 p: Point = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000, controller_reset=True) -> None:
         """
@@ -164,7 +164,7 @@ class IncrementalSolver:
         self.maximum_increments: int = maximum_increments
         self.controller = controller if controller is not None else Controller(0.1)
         self.controller_reset = controller_reset
-        self.p0 = p
+        self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
         # self.terminated = terminated if terminated is not None else (
         #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
         self.__name__ = name

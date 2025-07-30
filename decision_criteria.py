@@ -44,7 +44,7 @@ class EigenvalueChangeTermination:
         self.margin = margin
         self.change = False
 
-    def __call__(self, problem: Problem, p: List[Point], dp, y):
+    def __call__(self, problem: Problem, p: List[Point], dp, y, dy):
         point = p[-1] + dp
 
         mu0 = sum(eigvals(problem.kff(p[-1])) < 0)
