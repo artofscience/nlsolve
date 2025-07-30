@@ -168,22 +168,22 @@ class ArcLength(Constraint):
 
         else:
             if nlf.nf:
-                vec1 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
-                vec2 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
+                vec1 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                vec2 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
 
             if nlf.np:
-                vec1 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
-                vec2 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
+                vec1 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
+                vec2 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
 
                 if nlf.nf:
-                    vec11 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
-                    vec12 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
+                    vec11 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                    vec12 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
                     vec1 = np.append(vec11, vec12)
-                    vec21 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
-                    vec22 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
+                    vec21 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
+                    vec22 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
                     vec2 = np.append(vec21, vec22)
 
-            return cps[0].y if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1].y
+            return y[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else y[1]
 
 
 class NewtonRaphsonByArcLength(ArcLength):
