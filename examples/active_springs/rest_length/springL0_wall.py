@@ -30,15 +30,15 @@ solver = IterativeSolver(spring, converged=residual_norm(0.01))
 stepper = IncrementalSolver(solver)
 
 for j in [-1e-6, 0, 1e-6]:
-    point = Point(qp=np.array([0, 0, 1, 0]), ff=np.array([j]))
+    point = Point(q=np.array([0, 0, 1, 0, 0]), f=np.array([0, 0, 0, j, 0]))
     solution, tries = stepper(point + solver([point])[0])
 
-    ax1.plot([i.y for i in solution], [i.qf for i in solution], 'ro-')
-    ax2.plot([i.y for i in solution], [i.fp[-1] for i in solution], 'bo-')
+    ax1.plot([i.q[4] for i in solution], [i.q[3] for i in solution], 'ro-')
+    ax2.plot([i.q[4] for i in solution], [i.f[-1] for i in solution], 'bo-')
 
     for a in tries:
-        ax1.plot([i.y for i in a], [i.qf for i in a], 'ro--', alpha=0.1)
-        ax2.plot([i.y for i in a], [i.fp[-1] for i in a], 'bo--', alpha=0.1)
+        ax1.plot([i.q[4] for i in a], [i.q[3] for i in a], 'ro--', alpha=0.1)
+        ax2.plot([i.q[4] for i in a], [i.f[-1] for i in a], 'bo--', alpha=0.1)
 
 
 # CHECK REACTION FORCE VALUE
