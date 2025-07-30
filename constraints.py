@@ -92,15 +92,15 @@ class ArcLength(Constraint):
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
         cps = [ddp(nlf, p, ddx, i) for i in y]
-        return self.select_root_predictor(nlf, p, sol, cps)
+        return self.select_root_predictor(nlf, p, sol, cps, y)
 
     def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
             y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         except DiscriminantError:
             raise DiscriminantError
-        cps = [nlf.ddp(p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(nlf, dp, cps)
+        cps = [ddp(nlf, p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(nlf, dp, cps, y)
 
     def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
@@ -121,16 +121,16 @@ class ArcLength(Constraint):
         if nlf.nf:
             a[0] += np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
-            a[2] += np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
-            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
+            a[1] += 2 * np.dot(u[:, 1], nlf.qf(dp) + u[:, 0])
+            a[1] += 2 * self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ffc)
+            a[2] += np.dot(nlf.qf(dp) + u[:, 0], nlf.qf(dp) + u[:, 0])
+            a[2] += self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
-            a[2] += np.dot(dp.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, nlf.qp(dp))
+            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
             tmpa = nlf.kpp(p + dp) @ nlf.qpc
-            tmpc = dp.fp + nlf.rp(p + dp)
+            tmpc = nlf.fp(dp) + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
                 tmpc += nlf.kpf(p + dp) @ u[:, 0]
@@ -203,12 +203,12 @@ class NewtonRaphsonByArcLength(ArcLength):
         a[2] -= self.dl ** 2
         if nlf.nf:
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
-            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ffc)
+            a[2] += self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
-            a[2] += np.dot(dp.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, nlf.qp(dp))
+            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
