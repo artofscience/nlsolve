@@ -143,20 +143,20 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def select_root_corrector(self, nlf: Problem, dp: Point, cps: List[Point]) -> float:
+    def select_root_corrector(self, nlf: Problem, dp: Point, cps: List[Point], y) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.
         Note: this rule cannot be used in the first iteration since the initial corrections are equal to zero at the beginning of each increment.
         """
         if nlf.nf:
-            cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf)
+            cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i]))
         if nlf.np:
-            cpd = lambda i: np.dot(dp.qp, dp.qp + cps[i].qp)
+            cpd = lambda i: np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
             if nlf.nf:
-                cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf) + np.dot(dp.qp, dp.qp + cps[i].qp)
+                cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i])) + np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
 
-        return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
+        return y[0] if cpd(0) >= cpd(1) else y[1]
 
     def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point], y) -> float:
         if len(sol) < 2:
@@ -234,7 +234,7 @@ class GeneralizedArcLength(ArcLength):
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
         cps = [ddp(nlf, p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
+        return self.select_root_corrector(nlf, dp, cps, y) if self.alpha > 0.0 else cps[0].y
 
     def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
