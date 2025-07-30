@@ -98,10 +98,12 @@ class Problem(ABC):
     def point(self, qf, qp, ff, fp):
         q = np.zeros(self.n)
         f = np.zeros(self.n)
-        q[self.ixf] = qf
-        q[self.ixp] = qp
-        f[self.ixf] = ff
-        f[self.ixp] = fp
+        if self.nf:
+            q[self.ixf] = qf
+            f[self.ixf] = ff
+        if self.np:
+            q[self.ixp] = qp
+            f[self.ixp] = fp
         return Point(q, f)
 
 

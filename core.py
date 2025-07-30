@@ -91,8 +91,8 @@ class IterativeSolver:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
-        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.nlf.r(p+dp))))
+        dp = ddp(self.nlf, p, ddx, ddy)  # calculate prediction based on iterative load parameter
+        # self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.nlf.r(p+dp))))
 
         # endregion
 
