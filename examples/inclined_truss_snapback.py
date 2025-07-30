@@ -3,7 +3,7 @@ from math import pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import GeneralizedArcLength
+from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
 from utils import Structure, Point
 from controllers import Adaptive
@@ -35,9 +35,9 @@ class InclinedTrussSnapback:
 if __name__ == "__main__":
     truss = InclinedTrussSnapback()
 
-    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
+    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.2]))
 
-    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
+    solver = IterativeSolver(problem, NewtonRaphson(), residual_norm(1e-6))
 
     stepper = IncrementalSolver(solver)
 
