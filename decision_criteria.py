@@ -26,7 +26,7 @@ class DecisionCriterium(ABC):
         pass
 
 class LoadTermination(DecisionCriterium):
-    def __init__(self, threshold: float = 1.0, margin: float = 0.01):
+    def __init__(self, threshold: float = 1.0, margin: float = 1000.0):
         super().__init__(threshold, pmargin=margin)
 
     def value(self, problem: Problem, p: Point, y):
