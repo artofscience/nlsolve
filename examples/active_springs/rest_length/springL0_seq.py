@@ -41,8 +41,8 @@ solution, tries = stepperNR(point + solverNR([point])[0], Controller(0.05)) # so
 # get solution and take the last point to use as first point in subsequent analysis
 p2 = deepcopy(solution[-1])
 p2.y = 0.0 # reset lambda = 0.0
-spring.ff = np.array([-1]) # for second analysis we change the load from 1e-3 to (1e-3 + lambda * -2)
-spring.qp[-1] = 0.0 # for second analysis we keep L0 = 2m
+spring.ffc = np.array([-1]) # for second analysis we change the load from 1e-3 to (1e-3 + lambda * -2)
+spring.qpc[-1] = 0.0 # for second analysis we keep L0 = 2m
 
 adaptive = Adaptive(0.01, max=0.3, incr=1.2, decr=0.3)
 solution2, tries2 = stepperARC(p2, adaptive) # solve for second analysis
@@ -50,7 +50,7 @@ solution2, tries2 = stepperARC(p2, adaptive) # solve for second analysis
 # # get solution and take the last point to use as first point in subsequent analysis
 p3 = deepcopy(solution2[-1])
 p3.y = 0.0 # reset lambda = 0.0
-spring.ff = np.array([2]) # for second analysis we change the load from 1e-3 to (1e-3 + lambda * -2)
+spring.ffc = np.array([2]) # for second analysis we change the load from 1e-3 to (1e-3 + lambda * -2)
 solution3, tries3 = stepperARC(p3, adaptive) # solve for second analysis
 
 """VISUALS"""

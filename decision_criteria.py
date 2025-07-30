@@ -15,9 +15,9 @@ class DecisionCriterium(ABC):
         self.exceed = False
         self.accept = False
 
-    def __call__(self, problem: Problem, p: List[Point], dp, y):
+    def __call__(self, problem: Problem, p: List[Point], dp, y, dy):
         point = p[-1] + dp
-        value = self.value(problem, point, y)
+        value = self.value(problem, point, y + dy)
         self.exceed = self.operator(value, self.threshold)
         self.accept = self.threshold - self.nmargin < value < self.threshold + self.pmargin
 
@@ -26,7 +26,7 @@ class DecisionCriterium(ABC):
         pass
 
 class LoadTermination(DecisionCriterium):
-    def __init__(self, threshold: float = 1.0, margin: float = 0.1):
+    def __init__(self, threshold: float = 1.0, margin: float = 0.01):
         super().__init__(threshold, pmargin=margin)
 
     def value(self, problem: Problem, p: Point, y):

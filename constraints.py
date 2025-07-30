@@ -107,7 +107,7 @@ class ArcLength(Constraint):
         if nlf.nf:
             a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.qp
+            tmpa = nlf.kpp(p) @ nlf.qpc
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
             a += self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
@@ -122,14 +122,14 @@ class ArcLength(Constraint):
             a[0] += np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
             a[1] += 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
             a[2] += np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
             a[2] += np.dot(dp.qp, dp.qp)
-            tmpa = nlf.kpp(p + dp) @ nlf.qp
+            tmpa = nlf.kpp(p + dp) @ nlf.qpc
             tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
@@ -158,12 +158,12 @@ class ArcLength(Constraint):
 
         return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
 
-    def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point]) -> float:
-        if p.y == 0:
+    def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point], y) -> float:
+        if len(sol) < 2:
             if self.direction:
-                return cps[0].y if cps[0].y > cps[1].y else cps[1].y
+                return y[0] if y[0] > y[1] else y[1]
             else:
-                return cps[1].y if cps[0].y > cps[1].y else cps[0].y
+                return y[1] if y[0] > y[1] else y[0]
 
 
         else:
@@ -203,11 +203,11 @@ class NewtonRaphsonByArcLength(ArcLength):
         a[2] -= self.dl ** 2
         if nlf.nf:
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
             a[2] += np.dot(dp.qp, dp.qp)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -224,7 +224,7 @@ class GeneralizedArcLength(ArcLength):
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
         cps = [ddp(nlf, p, ddx, i) for i in y]
-        return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
+        return self.select_root_predictor(nlf, p, sol, cps, y) if self.alpha > 0.0 else y[0] # else take positive value
 
     def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
@@ -233,7 +233,7 @@ class GeneralizedArcLength(ArcLength):
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
-        cps = [nlf.ddp(p + dp, ddx, i) for i in y]
+        cps = [ddp(nlf, p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
 
     def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
@@ -241,7 +241,7 @@ class GeneralizedArcLength(ArcLength):
         if nlf.nf:
             a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.qp
+            tmpa = nlf.kpp(p) @ nlf.qpc
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
             a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
@@ -255,16 +255,16 @@ class GeneralizedArcLength(ArcLength):
         if nlf.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
-            a[2] += self.alpha * np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
-            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
+            a[1] += self.alpha * 2 * np.dot(u[:, 1], nlf.qf(dp) + u[:, 0])
+            a[1] += 2 * self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ffc)
+            a[2] += self.alpha * np.dot(nlf.qf(dp) + u[:, 0], nlf.qf(dp) + u[:, 0])
+            a[2] += self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
-            a[2] += np.dot(dp.qp, dp.qp)
-            tmpa = nlf.kpp(p + dp) @ nlf.qp
-            tmpc = dp.fp + nlf.rp(p + dp)
+            a[1] += 2 * np.dot(nlf.qpc, nlf.qp(dp))
+            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
+            tmpa = nlf.kpp(p + dp) @ nlf.qpc
+            tmpc = nlf.fp(dp) + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
                 tmpc += nlf.kpf(p + dp) @ u[:, 0]

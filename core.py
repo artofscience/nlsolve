@@ -218,7 +218,7 @@ class IncrementalSolver:
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
                     dp, dy, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
                     iterative_tries += iterates
-                    self.terminated(self.solution_method.nlf, equilibrium_solutions, p + dp, y + dy)
+                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, y, dy)
                     if self.terminated.exceed and not self.terminated.accept:
                         raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
                     else:

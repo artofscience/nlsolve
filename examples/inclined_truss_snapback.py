@@ -35,9 +35,9 @@ class InclinedTrussSnapback:
 if __name__ == "__main__":
     truss = InclinedTrussSnapback()
 
-    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.2]))
+    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
 
-    solver = IterativeSolver(problem, NewtonRaphson())
+    solver = IterativeSolver(problem, GeneralizedArcLength())
 
     stepper = IncrementalSolver(solver)
 

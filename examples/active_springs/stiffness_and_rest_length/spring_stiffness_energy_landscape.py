@@ -62,7 +62,7 @@ plt.plot([2 - 1.5*i.y for i in solution], [i.qf for i in solution], 'ro-')
 plt.xlim([-2, 2])
 plt.ylim([-2, 2])
 
-spring.qp[-1] = 1.9
+spring.qpc[-1] = 1.9
 p2 = deepcopy(solution[-1])
 y2 = p2.y
 p2.y = 0.0

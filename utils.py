@@ -23,10 +23,10 @@ def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
 
     if nlf.nf:
         ddqf = u[:, 0] + y * u[:, 1]
-        ddff = y * nlf.ff
+        ddff = y * nlf.ffc
     if nlf.np:
-        ddqp = y * nlf.qp
-        ddfp = nlf.rp(p) + y * nlf.kpp(p) @ nlf.qp
+        ddqp = y * nlf.qpc
+        ddfp = nlf.rp(p) + y * nlf.kpp(p) @ nlf.qpc
         ddfp += nlf.kpf(p) @ ddqf if nlf.nf else 0.0
 
     return nlf.point(ddqf, ddqp, ddff, ddfp)
@@ -46,20 +46,20 @@ class Problem(ABC):
         self.ixf = ixf
         self.ixp = ixp
 
-        self.ff = ff.astype(float) if ff is not None else None
-        self.qp = qp.astype(float) if qp is not None else None
+        self.ffc = ff.astype(float) if ff is not None else None
+        self.qpc = qp.astype(float) if qp is not None else None
 
         self.nf = len(self.ixf) if ixf is not None else 0
         self.np = len(self.ixp) if ixp is not None else 0
         self.n = self.nf + self.np
 
         # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ff, self.ff) if self.nf else None
-        self.qp2 = np.dot(self.qp, self.qp) if self.np else None
+        self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
+        self.qp2 = np.dot(self.qpc, self.qpc) if self.np else None
 
     def load(self, p: Point) -> State:
-        load = 1.0 * self.ff
-        load -= self.kfp(p) @ self.qp if self.np else 0.0  # adds to rhs if nonzero prescribed dof
+        load = 1.0 * self.ffc
+        load -= self.kfp(p) @ self.qpc if self.np else 0.0  # adds to rhs if nonzero prescribed dof
         return load
 
     def g(self, p: Point) -> State:
@@ -105,6 +105,18 @@ class Problem(ABC):
             q[self.ixp] = qp
             f[self.ixp] = fp
         return Point(q, f)
+
+    def qf(self, p):
+        return p.q[self.ixf]
+
+    def qp(self, p):
+        return p.q[self.ixp]
+
+    def ff(self, p):
+        return p.f[self.ixf]
+
+    def fp(self, p):
+        return p.f[self.ixp]
 
 
 
