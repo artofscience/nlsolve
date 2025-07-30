@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.2]))
 
-    solver = IterativeSolver(problem, NewtonRaphson(), residual_norm(1e-6))
+    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 
     stepper = IncrementalSolver(solver)
 
