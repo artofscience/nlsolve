@@ -33,7 +33,7 @@ criteria = criteria_1 & criteria_2
 
 controller = Adaptive(0.1, max=0.1, incr=1.5, decr=0.2, min=0.00001)
 
-p0 = Point(qp = np.array([0, 0, 1, 3]), qf = np.array([1.0]), ff = np.array([-0.1]))
+p0 = Point(q = np.array([0, 0, 1, 1, 3]), f = np.array([0, 0, 0, -0.1, 0]))
 
 solver_init = IterativeSolver(spring, NewtonRaphson(), criteria)
 dp0 = solver_init([p0])[0]
@@ -41,12 +41,12 @@ p0 = p0 + dp0
 
 solver = IterativeSolver(spring, GeneralizedArcLength(alpha=0.00001, beta=10), criteria)
 
-stepper = IncrementalSolver(solver, maximum_increments=2000)
+stepper = IncrementalSolver(solver, maximum_increments=50)
 
 solution, tries = stepper(p0, controller)
 
-plt.plot([i.y for i in solution], [i.qf for i in solution], 'ro-')
-plt.plot([i.y for i in solution], [i.qp[-1] for i in solution], 'bo-')
+plt.plot([i.q[3] for i in solution], [i.f[-1] for i in solution], 'ro-')
+plt.plot([i.q[-1] for i in solution], [i.f[-1] for i in solution], 'bo-')
 
 
 plt.ylim([-3, 3])

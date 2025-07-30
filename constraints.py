@@ -234,7 +234,7 @@ class GeneralizedArcLength(ArcLength):
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
         cps = [ddp(nlf, p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(nlf, dp, cps, y) if self.alpha > 0.0 else cps[0].y
+        return self.select_root_corrector(nlf, dp, cps, y) if self.alpha > 0.0 else y[0]
 
     def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0

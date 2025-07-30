@@ -35,7 +35,7 @@ structure = Problem(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 solver = IterativeSolver(structure, NewtonRaphson())
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 0]), qf=np.array([1]), ff=np.array([-0.05]))
+p0 = Point(q=np.array([0, 0, 1,0, 0]), f = np.array([0, 0, 0, -0.05, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -55,7 +55,7 @@ solution = steppah(p0 + dp0, controller)[0]
 
 fig, ax1 = plt.subplots(2, 1)
 
-T = np.asarray([i.y for i in solution])
+T = np.asarray([i.q[-1] for i in solution])
 k = 1 - 2 * T**2
 l0 = sqrt(2) - T
 
@@ -82,10 +82,10 @@ ax2.set_ylabel('Load', color='blue')
 ax2.tick_params(axis='y', labelcolor='blue')
 
 # reaction force on wall
-ax2.plot(T, [i.fp[2] for i in solution], 'b.--')
+ax2.plot(T, [i.f[2] for i in solution], 'b.--')
 
 # plot displacement
-ax1[1].plot(T, [i.qf[0] for i in solution], 'r.--')
+ax1[1].plot(T, [i.q[3] for i in solution], 'r.--')
 ax1[1].set_ylim([-3, 3])
 
 plt.show()

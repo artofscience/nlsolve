@@ -28,7 +28,7 @@ structure = Problem(spring, ixp=ixp, qp=qp)
 solver = IterativeSolver(structure)
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 0, 0]))
+p0 = Point(q=np.array([0, 0, 1, 0, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -41,12 +41,12 @@ steppah = IncrementalSolver(solver)
 solution = steppah(p0 + dp0)[0]
 
 # plot temperature and entropy (flux)
-plt.plot([i.y for i in solution], [i.qp[4] for i in solution], 'ko-')
-plt.plot([i.y for i in solution], [i.fp[4] for i in solution], 'ko--')
+plt.plot([i.q[4] for i in solution], [i.q[4] for i in solution], 'ko-')
+plt.plot([i.q[4] for i in solution], [i.f[4] for i in solution], 'ko--')
 
 # plot reaction forces on nodes
-plt.plot([i.y for i in solution], [i.fp[0] for i in solution], 'ro-')
-plt.plot([i.y for i in solution], [i.fp[2] for i in solution], 'ro--')
+plt.plot([i.q[4] for i in solution], [i.f[0] for i in solution], 'ro-')
+plt.plot([i.q[4] for i in solution], [i.f[2] for i in solution], 'ro--')
 
 plt.show()
 

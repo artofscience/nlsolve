@@ -53,7 +53,7 @@ structure = Problem(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 solver = IterativeSolver(structure, NewtonRaphson())
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 1, -2, 0]), qf=np.array([1]))
+p0 = Point(q=np.array([0, 0, 1,0, 1, -2, 0]), f=np.array([0,0,0, 1,0,0,0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -73,12 +73,12 @@ solution = steppah(p0 + dp0, controller)[0]
 
 fig, ax1 = plt.subplots(1, 1)
 
-T = np.asarray([i.y for i in solution])
+T = np.asarray([i.q[-1] for i in solution])
 l0 = 3 - 3 * T
 
 # plot displacement
 plt.plot(T, l0, 'ko--', label='Rest length')
-plt.plot(T, [i.qf[0] for i in solution], 'ro--', label='Y-position')
+plt.plot(T, [i.q[3] for i in solution], 'ro--', label='Y-position')
 plt.ylim([-2, 3.5])
 plt.xlabel('Temperature')
 plt.ylabel('Position')
