@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from spring import Spring
 
 """"
@@ -23,7 +23,7 @@ qp = np.zeros(4)
 qp[2] = 1.0
 
 # setup problem
-spring = Structure(Spring(k, l0), ixp=ixp, qp=qp)
+spring = Problem(Spring(k, l0), ixp=ixp, qp=qp)
 
 # setup solver
 solver = IterativeSolver(spring)

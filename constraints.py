@@ -6,7 +6,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 
-from utils import Structure, Point
+from utils import Problem, Point, ddp
 
 from logger import CustomFormatter, create_logger
 import logging
@@ -41,7 +41,7 @@ class Constraint(ABC):
         self._dl = value
 
     @abstractmethod
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any corrector step (iterate i > 1).
 
@@ -55,7 +55,7 @@ class Constraint(ABC):
         pass
 
     @abstractmethod
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any predictor step (iterate i = 0 AND increment j > 0).
 
@@ -71,10 +71,10 @@ class Constraint(ABC):
 
 class NewtonRaphson(Constraint):
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         return 0.0
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
 
         load = 0.0
         load += nlf.qp2 if nlf.np else 0.0
@@ -89,12 +89,12 @@ class ArcLength(Constraint):
         self.beta = beta
         self.direction = direction
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.ddp(p, ddx, i) for i in y]
+        cps = [ddp(nlf, p, ddx, i) for i in y]
         return self.select_root_predictor(nlf, p, sol, cps)
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
             y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         except DiscriminantError:
@@ -102,7 +102,7 @@ class ArcLength(Constraint):
         cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps)
 
-    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if nlf.nf:
             a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
@@ -114,7 +114,7 @@ class ArcLength(Constraint):
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_corrector(self, nlf: Problem, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
@@ -143,7 +143,7 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def select_root_corrector(self, nlf: Structure, dp: Point, cps: List[Point]) -> float:
+    def select_root_corrector(self, nlf: Problem, dp: Point, cps: List[Point]) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.
@@ -158,7 +158,7 @@ class ArcLength(Constraint):
 
         return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
 
-    def select_root_predictor(self, nlf: Structure, p: Point, sol: List[Point], cps: List[Point]) -> float:
+    def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point]) -> float:
         if p.y == 0:
             if self.direction:
                 return cps[0].y if cps[0].y > cps[1].y else cps[1].y
@@ -188,7 +188,7 @@ class ArcLength(Constraint):
 
 class NewtonRaphsonByArcLength(ArcLength):
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         a = 0.0
         if nlf.nf:
             a += self.beta ** 2 * nlf.ff2
@@ -197,7 +197,7 @@ class NewtonRaphsonByArcLength(ArcLength):
 
         return self.dl / np.sqrt(a)
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         a = np.zeros(3)
 
         a[2] -= self.dl ** 2
@@ -221,12 +221,12 @@ class GeneralizedArcLength(ArcLength):
         super().__init__(dl, name, logging_level, beta)
         self.alpha = alpha
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.ddp(p, ddx, i) for i in y]
+        cps = [ddp(nlf, p, ddx, i) for i in y]
         return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
             y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         except ValueError as error:
@@ -236,7 +236,7 @@ class GeneralizedArcLength(ArcLength):
         cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
 
-    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
         if nlf.nf:
             a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
@@ -248,7 +248,7 @@ class GeneralizedArcLength(ArcLength):
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_corrector(self, nlf: Problem, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
         a = np.zeros(3)
 
         a[2] -= dl ** 2

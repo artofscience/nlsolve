@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from criteria import residual_norm
 
 from spring import SpringL0
@@ -24,7 +24,7 @@ ff = np.zeros(1)
 qp = np.zeros(len(ixp))
 qp[-1] = 2.0
 
-spring = Structure(SpringL0(), ixf, ixp, ff, qp)
+spring = Problem(SpringL0(), ixf, ixp, ff, qp)
 
 solver = IterativeSolver(spring, converged=residual_norm(0.01))
 stepper = IncrementalSolver(solver)

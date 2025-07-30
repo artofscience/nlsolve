@@ -7,9 +7,9 @@ from core import IncrementalSolver, IterativeSolver
 from criteria import residual_norm
 from decision_criteria import EigenvalueTermination, LoadTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
-from utils import Structure, Point
+from utils import Problem, Point
 
-problem = Structure(InclinedTrussSnapback(), ixf=[0, 1], ff=np.array([0, 0.5]))
+problem = Problem(InclinedTrussSnapback(), ixf=[0, 1], ff=np.array([0, 0.5]))
 
 solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 

@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 
 from spring import SpringT
 
@@ -22,7 +22,7 @@ spring = SpringT(k = lambda T: 2 - 1.99 * T, l0 = lambda T: 1 + T,
                  d2kdt2 = lambda T: 0, d2l0dt2= lambda T: 0)
 
 # setup problem
-structure = Structure(spring, ixp=ixp, qp=qp)
+structure = Problem(spring, ixp=ixp, qp=qp)
 
 # setup solver
 solver = IterativeSolver(structure)

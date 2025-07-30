@@ -8,7 +8,7 @@ from operator import ge, le
 import numpy as np
 
 from logger import CustomFormatter, create_logger
-from utils import Structure, Point
+from utils import Problem, Point, ddp
 
 State = np.ndarray[float] | None
 
@@ -34,7 +34,7 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
 
-    def __init__(self, nlf: Structure, constraint: Constraint = None,
+    def __init__(self, nlf: Problem, constraint: Constraint = None,
                  converged = None, diverged = None,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
@@ -49,7 +49,7 @@ class IterativeSolver:
         # create some aliases for commonly used functions
         self.converged = converged if converged is not None else residual_norm(1e-6)
         self.diverged = diverged if diverged is not None else divergence_default()
-        self.nlf: Structure = nlf  # nonlinear system of equations
+        self.nlf: Problem = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
 
@@ -58,6 +58,7 @@ class IterativeSolver:
 
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
+
 
     def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, int, List[Point]]:
         self.logger.debug("Starting iterative solver")

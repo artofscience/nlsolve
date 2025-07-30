@@ -9,9 +9,9 @@ from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from decision_criteria import LoadTermination, EigenvalueChangeTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
-from utils import Structure, Point, plotter
+from utils import Problem, Point, plotter
 
-problem = Structure(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
+problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
 controller = Adaptive(0.05, incr=1.3, decr=0.1, min=0.00001)
 p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 constraint = GeneralizedArcLength()

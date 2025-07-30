@@ -3,7 +3,7 @@ import numpy as np
 from logging import ERROR
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from operator import le, ge
 from criteria import CriterionP
 
@@ -32,7 +32,7 @@ k, l0 = 1.0, np.sqrt(2)
 qp, ff = np.zeros(3), np.ones(1)
 
 # setup problem
-spring = Structure(Spring(k, l0), ixf, ixp, ff, qp)
+spring = Problem(Spring(k, l0), ixf, ixp, ff, qp)
 
 # setup solver
 solver = IterativeSolver(spring)

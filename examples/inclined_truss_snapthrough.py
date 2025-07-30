@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from controllers import Adaptive
 from criteria import residual_norm
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # add boundary and loading conditions
     # in this case we indicate the first index if free and corresponding load magnitude is 1
     # it will find out by itself that this is the only DOF
-    problem = Structure(truss, ixf=[0], ff=np.array([1]))
+    problem = Problem(truss, ixf=[0], ff=np.array([1]))
 
     # create an iterative solver with some constraint and convergence criterium
     solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-10))
@@ -51,6 +51,6 @@ if __name__ == "__main__":
     solution, _ = stepper(p0, controller)
 
     # plot position vs force
-    plt.plot([i.qf for i in solution], [i.ff for i in solution], 'ko-')
+    plt.plot([i.q for i in solution], [i.f for i in solution], 'ko-')
 
     plt.show()

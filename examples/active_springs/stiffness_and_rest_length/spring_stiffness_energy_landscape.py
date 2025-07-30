@@ -4,7 +4,7 @@ from matplotlib.colors import LogNorm
 
 from constraints import GeneralizedArcLength, ArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from criteria import residual_norm
 from math import sqrt
 from controllers import Adaptive
@@ -15,7 +15,7 @@ from spring import SpringL0K
 ixf = [3]
 ixp = [0, 1, 2, 4, 5]
 
-spring = Structure(SpringL0K(), ixf, ixp, np.zeros(1), np.array([0, 0, 0, 0, -1.5]))
+spring = Problem(SpringL0K(), ixf, ixp, np.zeros(1), np.array([0, 0, 0, 0, -1.5]))
 
 qp0 = np.array([0, 0, 1, sqrt(2), 2])
 qf0 = np.array([1])

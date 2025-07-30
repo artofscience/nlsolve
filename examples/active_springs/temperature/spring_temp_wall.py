@@ -3,7 +3,7 @@ import numpy as np
 from math import sqrt
 from controllers import Controller, Adaptive
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
 from spring import SpringT
@@ -29,7 +29,7 @@ spring = SpringT(k = lambda T: 1 - 2 * T**2, l0 = lambda T: sqrt(2) - T,
                  d2kdt2 = lambda T: 0, d2l0dt2= lambda T: 0)
 
 # setup problem
-structure = Structure(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
+structure = Problem(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 
 # setup solver
 solver = IterativeSolver(structure, NewtonRaphson())

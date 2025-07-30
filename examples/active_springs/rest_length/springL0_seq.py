@@ -3,7 +3,7 @@ import numpy as np
 from constraints import ArcLength
 from controllers import Controller, Adaptive
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from copy import deepcopy
 from spring import SpringL0
 
@@ -25,7 +25,7 @@ qp = np.zeros(len(ixp))
 qp[-1] = 2.0 # so change initial restlength by 2.0 m
 
 # build spring model
-spring = Structure(SpringL0(), ixf, ixp, ff, qp)
+spring = Problem(SpringL0(), ixf, ixp, ff, qp)
 
 # setup stepper
 solverNR = IterativeSolver(spring)

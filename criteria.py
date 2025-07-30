@@ -1,6 +1,6 @@
 """Abstract implementation for convergence criteria."""
 from abc import ABC, abstractmethod
-from utils import Point, Structure
+from utils import Point, Problem
 import logging
 import operator
 from operator import lt, ge
@@ -99,7 +99,7 @@ class Criteria(CriterionBase):
         self.left, self.right = left, right
         self.operator = op
 
-    def __call__(self, problem: Structure, p: Point, ddy: float) -> bool:
+    def __call__(self, problem: Problem, p: Point, ddy: float) -> bool:
         """Ensure both criteria are called when called."""
         done = self.operator(bool(self.left(problem, p, ddy)), bool(self.right(problem, p, ddy)))
         if done:
@@ -139,7 +139,7 @@ class CriterionP(CriterionBase):
         self.threshold = threshold
         self.operator = is_x_then
 
-    def __call__(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def __call__(self, nlf: Problem, p: Point, ddy: float) -> bool:
         value = self.call_to_fnc(nlf, p, ddy) # the value to work with it the output of the provided function
         self.ref = 1.0 * value if self.ref is None else self.ref # set reference if not done yet
         done = self.operator(value, self.threshold) # compare value to given threshold
@@ -152,7 +152,7 @@ class CriterionP(CriterionBase):
     def reset(self):
         self.ref = None # reset reference value
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         return self.fnc(p) # only takes the Point
 
 class CriterionX(CriterionP):
@@ -161,7 +161,7 @@ class CriterionX(CriterionP):
 
     One can define a function, e.g. the norm of the residual vector,
     and compare to some float via an operator
-    >>> def my_function(nlf: Structure, p: Point) -> float: return np.linalg.norm(nlf.r(p))
+    >>> def my_function(nlf: Problem, p: Point) -> float: return np.linalg.norm(nlf.r(p))
 
     Alternativley one can use a lambda function.
     Example use to check whether the maximum absolute value of the internal load of free dofs is lower than some value:
@@ -176,7 +176,7 @@ class CriterionX(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         return self.fnc(nlf, p) # note: takes the nonlinear function and the state (point)
 
 class CriterionXH(CriterionX):
@@ -186,7 +186,7 @@ class CriterionXH(CriterionX):
 
     One can define a function, e.g. the norm of the difference of residual vectors of two iterates,
     and compare to some float via an operator
-    >>> def my_function(nlf: Structure, p: Point, p_old: Point) -> float:
+    >>> def my_function(nlf: Problem, p: Point, p_old: Point) -> float:
     >>>     return np.linalg.norm(nlf.r(p) - nlf.r(p_old))
 
     Alternativley one can use a lambda function.
@@ -202,7 +202,7 @@ class CriterionXH(CriterionX):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
         self.point_old = None # initialize the old point
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         if self.point_old is None:
             self.point_old = 0.0 * p # set the old point of not done yet, here initialized to zero point
         value = self.fnc(nlf, p, self.point_old) # note the old point is the third input
@@ -221,7 +221,7 @@ class CriterionY(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         return self.fnc(ddy)
 
     def reset(self):
@@ -237,7 +237,7 @@ class CriterionYH(CriterionY):
         self.old_ref = value
         self.ddy_old = value
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         value = self.fnc(ddy, self.ddy_old)
         self.ddy_old = 1.0 * ddy
         return value

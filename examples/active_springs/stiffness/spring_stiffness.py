@@ -3,7 +3,7 @@ import numpy as np
 
 from constraints import GeneralizedArcLength, ArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from criteria import residual_norm, CriterionY, CriterionXH, CriterionYH
 from math import sqrt
 from controllers import Adaptive
@@ -24,7 +24,7 @@ ff = np.zeros(1)
 qp = np.zeros(len(ixp))
 qp[-1] = -3
 
-spring = Structure(SpringK(l0=sqrt(2)), ixf, ixp, ff, qp)
+spring = Problem(SpringK(l0=sqrt(2)), ixf, ixp, ff, qp)
 
 criteria_1 = CriterionY(lambda x: abs(x), le, 1e-2)
 criteria_2 = residual_norm(1e-3)

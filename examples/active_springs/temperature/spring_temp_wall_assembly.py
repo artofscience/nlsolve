@@ -3,7 +3,7 @@ import numpy as np
 from math import sqrt
 from controllers import Controller, Adaptive
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
 from spring import SpringT
@@ -47,7 +47,7 @@ qp[-1] = 1.0
 ff = np.zeros(1)
 
 # setup problem
-structure = Structure(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
+structure = Problem(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 
 # setup solver
 solver = IterativeSolver(structure, NewtonRaphson())

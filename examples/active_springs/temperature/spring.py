@@ -1,6 +1,6 @@
 import numpy as np
 from collections.abc import Callable
-from utils import Structure
+from utils import Problem
 
 
 
