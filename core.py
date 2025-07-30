@@ -60,7 +60,7 @@ class IterativeSolver:
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
 
-    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, int, List[Point]]:
+    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, float, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
         self.converged.reset()
         self.diverged.reset()
@@ -96,6 +96,7 @@ class IterativeSolver:
 
         # endregion
 
+        dy = 1.0 * ddy
 
         counter = Counter(self.maximum_corrections)
 
@@ -129,11 +130,13 @@ class IterativeSolver:
             dp += ddp(self.nlf, p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
             self.logger.debug("Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.nlf.r(p + dp))))
 
+            dy += ddy
+
             #endregion
 
             tries.append(p + dp)  # add attempt to tries
 
-        return dp, counter.count, tries
+        return dp, dy, counter.count, tries
 
 
 class IncrementalSolver:
@@ -200,6 +203,8 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
+        y = 0.0
+
         while True:
 
             incremental_counter += 1
@@ -211,9 +216,9 @@ class IncrementalSolver:
                 try:
                     incremental_tries += 1
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
-                    dp, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
+                    dp, dy, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
                     iterative_tries += iterates
-                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
+                    self.terminated(self.solution_method.nlf, equilibrium_solutions, p + dp, y + dy)
                     if self.terminated.exceed and not self.terminated.accept:
                         raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
                     else:
@@ -235,10 +240,11 @@ class IncrementalSolver:
 
 
             p = p + dp  # add incremental state to current state (if equilibrium found)
+            y += dy
 
             self.logger.debug(
-                "New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (
-                    dp.y, iterates, p.y))
+                "New equilibrium point found at dy = %+f in %d iterates, new y = %+f " % (
+                    dy, iterates, y))
 
             equilibrium_solutions.append(p)  # append equilibrium solution to storage
 

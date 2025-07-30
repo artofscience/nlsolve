@@ -15,28 +15,28 @@ class DecisionCriterium(ABC):
         self.exceed = False
         self.accept = False
 
-    def __call__(self, problem: Problem, p: List[Point], dp):
+    def __call__(self, problem: Problem, p: List[Point], dp, y):
         point = p[-1] + dp
-        value = self.value(problem, point)
+        value = self.value(problem, point, y)
         self.exceed = self.operator(value, self.threshold)
         self.accept = self.threshold - self.nmargin < value < self.threshold + self.pmargin
 
     @abstractmethod
-    def value(self, problem: Problem, p: Point):
+    def value(self, problem: Problem, p: Point, y):
         pass
 
 class LoadTermination(DecisionCriterium):
     def __init__(self, threshold: float = 1.0, margin: float = 0.1):
         super().__init__(threshold, pmargin=margin)
 
-    def value(self, problem: Problem, p: Point):
-        return p.y
+    def value(self, problem: Problem, p: Point, y):
+        return y
 
 class EigenvalueTermination(DecisionCriterium):
     def __init__(self, threshold: float = 0.0, margin: float = 0.1):
         super().__init__(threshold, lt, nmargin=margin)
 
-    def value(self, problem: Problem, p: Point):
+    def value(self, problem: Problem, p: Point, y):
         return min(eigvals(problem.kff(p)))
 
 class EigenvalueChangeTermination:
@@ -44,7 +44,7 @@ class EigenvalueChangeTermination:
         self.margin = margin
         self.change = False
 
-    def __call__(self, problem: Problem, p: List[Point], dp):
+    def __call__(self, problem: Problem, p: List[Point], dp, y):
         point = p[-1] + dp
 
         mu0 = sum(eigvals(problem.kff(p[-1])) < 0)
