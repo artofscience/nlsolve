@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     stepper = IncrementalSolver(solver)
 
-    p0 = Point(q=np.array([0, 0]), f=np.array([0, 0]))
+    p0 = Point(q=np.array([0.0, 0.0]), f=np.array([0.0, 0.0]))
 
     controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 

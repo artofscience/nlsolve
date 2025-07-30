@@ -131,7 +131,7 @@ class Point:
         :param other: another Point object
         :return: a third Point object that is the addition
         """
-        out = deepcopy(Point(self.q, self.f))
+        out = deepcopy(self)
         out += other
         return out
 
