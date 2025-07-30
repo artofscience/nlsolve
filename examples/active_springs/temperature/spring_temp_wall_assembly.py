@@ -3,7 +3,7 @@ import numpy as np
 from math import sqrt
 from controllers import Controller, Adaptive
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
 from spring import SpringT
@@ -47,13 +47,13 @@ qp[-1] = 1.0
 ff = np.zeros(1)
 
 # setup problem
-structure = Structure(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
+structure = Problem(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 
 # setup solver
 solver = IterativeSolver(structure, NewtonRaphson())
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 1, -2, 0]), qf=np.array([1]))
+p0 = Point(q=np.array([0, 0, 1,0, 1, -2, 0]), f=np.array([0,0,0, 1,0,0,0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -73,12 +73,12 @@ solution = steppah(p0 + dp0, controller)[0]
 
 fig, ax1 = plt.subplots(1, 1)
 
-T = np.asarray([i.y for i in solution])
+T = np.asarray([i.q[-1] for i in solution])
 l0 = 3 - 3 * T
 
 # plot displacement
 plt.plot(T, l0, 'ko--', label='Rest length')
-plt.plot(T, [i.qf[0] for i in solution], 'ro--', label='Y-position')
+plt.plot(T, [i.q[3] for i in solution], 'ro--', label='Y-position')
 plt.ylim([-2, 3.5])
 plt.xlabel('Temperature')
 plt.ylabel('Position')

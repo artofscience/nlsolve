@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point
 from spring import Spring
 
 """"
@@ -23,13 +23,13 @@ qp = np.zeros(4)
 qp[2] = 1.0
 
 # setup problem
-spring = Structure(Spring(k, l0), ixp=ixp, qp=qp)
+spring = Problem(Spring(k, l0), ixp=ixp, qp=qp)
 
 # setup solver
 solver = IterativeSolver(spring)
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 0]))
+p0 = Point(q=np.array([0, 0, 1, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -51,8 +51,9 @@ ax2.set_ylabel('Load', color='blue')
 ax2.tick_params(axis='y', labelcolor='blue')
 
 # plot
-ax1.plot([i.y for i in solution], [i.qp[2] for i in solution], 'ko-')
-ax2.plot([i.y for i in solution], [i.fp[2] for i in solution], 'ro--')
+
+ax1.plot([i.q[2] for i in solution], [i.q[2] for i in solution], 'ko-')
+ax2.plot([i.q[2] for i in solution], [i.f[2] for i in solution], 'ro--')
 
 
 plt.show()

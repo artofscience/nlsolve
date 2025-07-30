@@ -9,16 +9,15 @@ from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from decision_criteria import LoadTermination, EigenvalueChangeTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
-from utils import Structure, Point, plotter
+from utils import Problem, Point, plotter
 
-problem = Structure(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
+problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
 controller = Adaptive(0.05, incr=1.3, decr=0.1, min=0.00001)
-p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
 constraint = GeneralizedArcLength()
 
 solver = IterativeSolver(problem, constraint)
 
-stepper = IncrementalSolver(solver, p0, controller, maximum_increments=100)
+stepper = IncrementalSolver(solver, controller, maximum_increments=100)
 
 solution0 = stepper(terminated=EigenvalueChangeTermination())[0]
 
@@ -26,7 +25,6 @@ plotter(solution0, 1, 1, 'ko--')
 plotter(solution0, 0, 1, 'bo--')
 
 pswitch = deepcopy(solution0[-1])
-pswitch.y = 0.0
 
 constraint.direction = False
 solution1 = stepper(pswitch, terminated=EigenvalueChangeTermination())[0]
@@ -36,7 +34,6 @@ plotter(solution1, 1, 1, 'yo--')
 plotter(solution1, 0, 1, 'go--')
 
 pswitch = deepcopy(solution1[-1])
-pswitch.y = 0.0
 
 constraint.direction = True
 solution2 = stepper(pswitch, terminated=LoadTermination())[0]

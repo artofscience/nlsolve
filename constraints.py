@@ -6,7 +6,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 
-from utils import Structure, Point
+from utils import Problem, Point, ddp
 
 from logger import CustomFormatter, create_logger
 import logging
@@ -41,7 +41,7 @@ class Constraint(ABC):
         self._dl = value
 
     @abstractmethod
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any corrector step (iterate i > 1).
 
@@ -55,7 +55,7 @@ class Constraint(ABC):
         pass
 
     @abstractmethod
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         """
         Determines the iterative load parameter for any predictor step (iterate i = 0 AND increment j > 0).
 
@@ -71,10 +71,10 @@ class Constraint(ABC):
 
 class NewtonRaphson(Constraint):
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         return 0.0
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
 
         load = 0.0
         load += nlf.qp2 if nlf.np else 0.0
@@ -89,12 +89,12 @@ class ArcLength(Constraint):
         self.beta = beta
         self.direction = direction
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.ddp(p, ddx, i) for i in y]
+        cps = [ddp(nlf, p, ddx, i) for i in y]
         return self.select_root_predictor(nlf, p, sol, cps)
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
             y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         except DiscriminantError:
@@ -102,19 +102,19 @@ class ArcLength(Constraint):
         cps = [nlf.ddp(p + dp, ddx, i) for i in y]
         return self.select_root_corrector(nlf, dp, cps)
 
-    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = 0.0
         if nlf.nf:
             a += np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.qp
+            tmpa = nlf.kpp(p) @ nlf.qpc
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
             a += self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
+    def get_roots_corrector(self, nlf: Problem, p: Point, dp: Point, u: np.ndarray, dl: float) -> np.ndarray:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
@@ -122,14 +122,14 @@ class ArcLength(Constraint):
             a[0] += np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
             a[1] += 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
             a[2] += np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
             a[2] += np.dot(dp.qp, dp.qp)
-            tmpa = nlf.kpp(p + dp) @ nlf.qp
+            tmpa = nlf.kpp(p + dp) @ nlf.qpc
             tmpc = dp.fp + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
@@ -143,52 +143,52 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def select_root_corrector(self, nlf: Structure, dp: Point, cps: List[Point]) -> float:
+    def select_root_corrector(self, nlf: Problem, dp: Point, cps: List[Point], y) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.
         Note: this rule cannot be used in the first iteration since the initial corrections are equal to zero at the beginning of each increment.
         """
         if nlf.nf:
-            cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf)
+            cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i]))
         if nlf.np:
-            cpd = lambda i: np.dot(dp.qp, dp.qp + cps[i].qp)
+            cpd = lambda i: np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
             if nlf.nf:
-                cpd = lambda i: np.dot(dp.qf, dp.qf + cps[i].qf) + np.dot(dp.qp, dp.qp + cps[i].qp)
+                cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i])) + np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
 
-        return cps[0].y if cpd(0) >= cpd(1) else cps[1].y
+        return y[0] if cpd(0) >= cpd(1) else y[1]
 
-    def select_root_predictor(self, nlf: Structure, p: Point, sol: List[Point], cps: List[Point]) -> float:
-        if p.y == 0:
+    def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point], y) -> float:
+        if len(sol) < 2:
             if self.direction:
-                return cps[0].y if cps[0].y > cps[1].y else cps[1].y
+                return y[0] if y[0] > y[1] else y[1]
             else:
-                return cps[1].y if cps[0].y > cps[1].y else cps[0].y
+                return y[1] if y[0] > y[1] else y[0]
 
 
         else:
             if nlf.nf:
-                vec1 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
-                vec2 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
+                vec1 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                vec2 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
 
             if nlf.np:
-                vec1 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
-                vec2 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
+                vec1 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
+                vec2 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
 
                 if nlf.nf:
-                    vec11 = np.append(sol[-2].qf - p.qf - cps[0].qf, sol[-2].ff - p.ff - cps[0].ff)
-                    vec12 = np.append(sol[-2].qp - p.qp - cps[0].qp, sol[-2].fp - p.fp - cps[0].fp)
+                    vec11 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                    vec12 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
                     vec1 = np.append(vec11, vec12)
-                    vec21 = np.append(sol[-2].qf - p.qf - cps[1].qf, sol[-2].ff - p.ff - cps[1].ff)
-                    vec22 = np.append(sol[-2].qp - p.qp - cps[1].qp, sol[-2].fp - p.fp - cps[1].fp)
+                    vec21 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
+                    vec22 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
                     vec2 = np.append(vec21, vec22)
 
-            return cps[0].y if np.linalg.norm(vec1) > np.linalg.norm(vec2) else cps[1].y
+            return y[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else y[1]
 
 
 class NewtonRaphsonByArcLength(ArcLength):
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         a = 0.0
         if nlf.nf:
             a += self.beta ** 2 * nlf.ff2
@@ -197,17 +197,17 @@ class NewtonRaphsonByArcLength(ArcLength):
 
         return self.dl / np.sqrt(a)
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         a = np.zeros(3)
 
         a[2] -= self.dl ** 2
         if nlf.nf:
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
+            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ffc)
             a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
+            a[1] += 2 * np.dot(nlf.qpc, dp.qp)
             a[2] += np.dot(dp.qp, dp.qp)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
@@ -221,50 +221,50 @@ class GeneralizedArcLength(ArcLength):
         super().__init__(dl, name, logging_level, beta)
         self.alpha = alpha
 
-    def predictor(self, nlf: Structure, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
-        cps = [nlf.ddp(p, ddx, i) for i in y]
-        return self.select_root_predictor(nlf, p, sol, cps) if self.alpha > 0.0 else cps[0].y
+        cps = [ddp(nlf, p, ddx, i) for i in y]
+        return self.select_root_predictor(nlf, p, sol, cps, y) if self.alpha > 0.0 else y[0] # else take positive value
 
-    def corrector(self, nlf: Structure, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
             y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
         except ValueError as error:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
-        cps = [nlf.ddp(p + dp, ddx, i) for i in y]
-        return self.select_root_corrector(nlf, dp, cps) if self.alpha > 0.0 else cps[0].y
+        cps = [ddp(nlf, p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(nlf, dp, cps, y) if self.alpha > 0.0 else y[0]
 
-    def get_roots_predictor(self, nlf: Structure, p: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
         a = 0.0
         if nlf.nf:
             a += self.alpha * np.dot(u[:, 1], u[:, 1]) + self.beta ** 2 * nlf.ff2
         if nlf.np:
-            tmpa = nlf.kpp(p) @ nlf.qp
+            tmpa = nlf.kpp(p) @ nlf.qpc
             if nlf.nf:
                 tmpa += nlf.kpf(p) @ u[:, 1]
             a += self.alpha * self.beta ** 2 * np.dot(tmpa, tmpa) + nlf.qp2
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, nlf: Structure, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
+    def get_roots_corrector(self, nlf: Problem, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
         a = np.zeros(3)
 
         a[2] -= dl ** 2
         if nlf.nf:
             a[0] += self.alpha * np.dot(u[:, 1], u[:, 1])
             a[0] += self.beta ** 2 * nlf.ff2
-            a[1] += self.alpha * 2 * np.dot(u[:, 1], dp.qf + u[:, 0])
-            a[1] += 2 * self.beta ** 2 * np.dot(dp.ff, nlf.ff)
-            a[2] += self.alpha * np.dot(dp.qf + u[:, 0], dp.qf + u[:, 0])
-            a[2] += self.beta ** 2 * np.dot(dp.ff, dp.ff)
+            a[1] += self.alpha * 2 * np.dot(u[:, 1], nlf.qf(dp) + u[:, 0])
+            a[1] += 2 * self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ffc)
+            a[2] += self.alpha * np.dot(nlf.qf(dp) + u[:, 0], nlf.qf(dp) + u[:, 0])
+            a[2] += self.beta ** 2 * np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
             a[0] += nlf.qp2
-            a[1] += 2 * np.dot(nlf.qp, dp.qp)
-            a[2] += np.dot(dp.qp, dp.qp)
-            tmpa = nlf.kpp(p + dp) @ nlf.qp
-            tmpc = dp.fp + nlf.rp(p + dp)
+            a[1] += 2 * np.dot(nlf.qpc, nlf.qp(dp))
+            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
+            tmpa = nlf.kpp(p + dp) @ nlf.qpc
+            tmpc = nlf.fp(dp) + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
                 tmpc += nlf.kpf(p + dp) @ u[:, 0]

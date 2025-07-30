@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
+from utils import Problem, Point, plotter
 from controllers import Adaptive
 from criteria import residual_norm
 
@@ -35,22 +35,20 @@ class InclinedTrussSnapback:
 if __name__ == "__main__":
     truss = InclinedTrussSnapback()
 
-    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.2]))
+    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
 
-    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
-
-    stepper = IncrementalSolver(solver)
-
-    p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
+    solver = IterativeSolver(problem, GeneralizedArcLength())
 
     controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
-    solution = stepper(p0, controller)[0]
+    stepper = IncrementalSolver(solver, controller)
+
+    solution = stepper()[0]
 
     # PLOTTING
 
     # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
-    plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
-    plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
+    plotter(solution, 0, 1)
+    plotter(solution, 1,1, 'bo-')
 
     plt.show()

@@ -8,7 +8,7 @@ from operator import ge, le
 import numpy as np
 
 from logger import CustomFormatter, create_logger
-from utils import Structure, Point
+from utils import Problem, Point, ddp
 
 State = np.ndarray[float] | None
 
@@ -34,7 +34,7 @@ class IterativeSolver:
     that is solving the provided system of nonlinear equations given some constraint function.
     """
 
-    def __init__(self, nlf: Structure, constraint: Constraint = None,
+    def __init__(self, nlf: Problem, constraint: Constraint = None,
                  converged = None, diverged = None,
                  name: str = None, logging_level: int = logging.DEBUG,
                  maximum_corrections: int = 1000) -> None:
@@ -49,7 +49,7 @@ class IterativeSolver:
         # create some aliases for commonly used functions
         self.converged = converged if converged is not None else residual_norm(1e-6)
         self.diverged = diverged if diverged is not None else divergence_default()
-        self.nlf: Structure = nlf  # nonlinear system of equations
+        self.nlf: Problem = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
 
@@ -59,7 +59,8 @@ class IterativeSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
-    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, int, List[Point]]:
+
+    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, float, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
         self.converged.reset()
         self.diverged.reset()
@@ -90,11 +91,12 @@ class IterativeSolver:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        dp = self.nlf.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
+        dp = ddp(self.nlf, p, ddx, ddy)  # calculate prediction based on iterative load parameter
         self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.nlf.r(p+dp))))
 
         # endregion
 
+        dy = 1.0 * ddy
 
         counter = Counter(self.maximum_corrections)
 
@@ -125,14 +127,16 @@ class IterativeSolver:
                 self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                 raise ValueError("A suitable correction cannot be found!", counter.count)
 
-            dp += self.nlf.ddp(p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
+            dp += ddp(self.nlf, p + dp, ddx, ddy) # calculate correction based on iterative load parameter and update incremental state
             self.logger.debug("Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.nlf.r(p + dp))))
+
+            dy += ddy
 
             #endregion
 
             tries.append(p + dp)  # add attempt to tries
 
-        return dp, counter.count, tries
+        return dp, dy, counter.count, tries
 
 
 class IncrementalSolver:
@@ -141,8 +145,8 @@ class IncrementalSolver:
     """
 
     def __init__(self, solution_method: IterativeSolver,
-                 p: Point = None,
                  controller: Controller = None,
+                 p: Point = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000, controller_reset=True) -> None:
         """
@@ -160,7 +164,7 @@ class IncrementalSolver:
         self.maximum_increments: int = maximum_increments
         self.controller = controller if controller is not None else Controller(0.1)
         self.controller_reset = controller_reset
-        self.p0 = p
+        self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
         # self.terminated = terminated if terminated is not None else (
         #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
         self.__name__ = name
@@ -199,6 +203,8 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
+        y = 0.0
+
         while True:
 
             incremental_counter += 1
@@ -210,9 +216,9 @@ class IncrementalSolver:
                 try:
                     incremental_tries += 1
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
-                    dp, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
+                    dp, dy, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
                     iterative_tries += iterates
-                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp)
+                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, y, dy)
                     if self.terminated.exceed and not self.terminated.accept:
                         raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
                     else:
@@ -234,10 +240,11 @@ class IncrementalSolver:
 
 
             p = p + dp  # add incremental state to current state (if equilibrium found)
+            y += dy
 
             self.logger.debug(
-                "New equilibrium point found at dp.y = %+f in %d iterates, new p.y = %+f " % (
-                    dp.y, iterates, p.y))
+                "New equilibrium point found at dy = %+f in %d iterates, new y = %+f " % (
+                    dy, iterates, y))
 
             equilibrium_solutions.append(p)  # append equilibrium solution to storage
 
