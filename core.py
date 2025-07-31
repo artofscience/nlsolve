@@ -154,7 +154,10 @@ class IncrementalSolver:
                  controller: Controller = None,
                  p: Point = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
-                 maximum_increments: int = 1000, controller_reset: bool = True, time_reset: bool = True, y: float = 0.0) -> None:
+                 maximum_increments: int = 1000,
+                 controller_reset: bool = True,
+                 time_reset: bool = True,
+                 y: float = 0.0) -> None:
         """
         Initialization of the incremental solver.
 
@@ -191,8 +194,8 @@ class IncrementalSolver:
 
 
     def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None, terminated = None,
-                 time_reset: bool = False,
-                 controller_reset: bool = False) -> Out:
+                 time_reset: bool = None,
+                 controller_reset: bool = None) -> Out:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -207,10 +210,22 @@ class IncrementalSolver:
             self.controller = controller
 
         # reset controller for future use of the incremental solver with same controller
-        if self.controller_reset:
-            self.controller.reset()
-        if controller_reset:
-            self.controller.reset()
+        if controller_reset is not None:
+            if controller_reset:
+                self.controller.reset()
+        else:
+            if self.controller_reset:
+                self.controller.reset()
+
+        # reset time?
+        if time_reset is not None:
+            if time_reset:
+                self.y = 0.0
+        else:
+            if self.time_reset:
+                self.y = 0.0
+
+        time = [self.y]
 
         if constraint is not None:
             self.solution_method.constraint = constraint
@@ -229,13 +244,7 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
-        # reset time?
-        if self.time_reset:
-            self.y = 0.0
-        if time_reset:
-            self.y = 0.0
 
-        time = [self.y]
 
 
         while True:
