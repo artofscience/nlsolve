@@ -52,7 +52,7 @@ class EigenvalueChangeTermination:
         eigs = eigvals(problem.kff(point))
         mu1 = sum(eigs < 0)
 
-        value = abs(min(eigs))
+        value = min(abs(eigs))
 
         self.change = (mu0 != mu1)
         self.exceed = self.change and value > self.margin
