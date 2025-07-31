@@ -252,5 +252,5 @@ def residual_norm(threshold, name: str ="Residual norm", logging_level: int = lo
     return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold, name=name, logging_level=logging_level)
 
 def divergence_default():
-    return (CriterionYH(lambda x, y: abs(y) - abs(x), lt, 0.0)
+    return (CriterionYH(lambda x, y: abs(y) - abs(x), lt, 0.0, logging_level=logging.ERROR)
     & CriterionXH(lambda nlf, p, p_old: np.linalg.norm(nlf.r(p)) - np.linalg.norm(nlf.r(p_old)), gt, 0, logging_level=logging.ERROR))
