@@ -45,9 +45,9 @@ if __name__ == "__main__":
 
     # run the stepper given initial point p0 and controller
     stepper = IncrementalSolver(solver, controller)
-    solution = stepper()[0]
+    out = stepper()
 
     # plot position vs force
-    plotter(solution, 0, 0)
+    plotter(out.solutions, 0, 0)
 
     plt.show()

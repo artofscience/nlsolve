@@ -19,28 +19,28 @@ solver = IterativeSolver(problem, constraint)
 
 stepper = IncrementalSolver(solver, controller, maximum_increments=100)
 
-solution0 = stepper(terminated=EigenvalueChangeTermination())[0]
+solution0 = stepper(terminated=EigenvalueChangeTermination())
 
-plotter(solution0, 1, 1, 'ko--')
-plotter(solution0, 0, 1, 'bo--')
+plotter(solution0.solutions, 1, 1, 'ko--')
+plotter(solution0.solutions, 0, 1, 'bo--')
 
-pswitch = deepcopy(solution0[-1])
+pswitch = deepcopy(solution0.solutions[-1])
 
 constraint.direction = False
-solution1 = stepper(pswitch, terminated=EigenvalueChangeTermination())[0]
+solution1 = stepper(pswitch, terminated=EigenvalueChangeTermination())
 
 
-plotter(solution1, 1, 1, 'yo--')
-plotter(solution1, 0, 1, 'go--')
+plotter(solution1.solutions, 1, 1, 'yo--')
+plotter(solution1.solutions, 0, 1, 'go--')
 
-pswitch = deepcopy(solution1[-1])
+pswitch = deepcopy(solution1.solutions[-1])
 
 constraint.direction = True
-solution2 = stepper(pswitch, terminated=LoadTermination())[0]
+solution2 = stepper(pswitch, terminated=LoadTermination())
 
 
-plotter(solution2, 1, 1, 'ro--')
-plotter(solution2, 0, 1, 'co--')
+plotter(solution2.solutions, 1, 1, 'ro--')
+plotter(solution2.solutions, 0, 1, 'co--')
 
 
 plt.show()

@@ -21,17 +21,17 @@ stepper = IncrementalSolver(solver, controller=controller)
 decision = LoadTermination(1.0, 0.01)
 
 # stepper.controller_reset = False
-solution = stepper(terminated=decision)[0]
+out = stepper(terminated=decision)
 
-plotter(solution, 0, 1, 'ko-')
-plotter(solution, 1, 1, 'bo-')
+plotter(out.solutions, 0, 1, 'ko-')
+plotter(out.solutions, 1, 1, 'bo-')
 
 # then solve for eigenvalue termination
 decision = EigenvalueTermination(-0.2, 0.01)
 
-solution = stepper(terminated=decision)[0]
+out = stepper(terminated=decision)
 
-plotter(solution, 0, 1, 'ro-')
-plotter(solution, 1, 1, 'yo-')
+plotter(out.solutions, 0, 1, 'ro-')
+plotter(out.solutions, 1, 1, 'yo-')
 
 plt.show()

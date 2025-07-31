@@ -139,6 +139,12 @@ class IterativeSolver:
         return dp, dy, counter.count, tries
 
 
+class Out:
+    def __init__(self):
+        self.solutions = None
+        self.time = None
+        self.tries = None
+
 class IncrementalSolver:
     """
     The IncrementalSolver solves a given system of nonlinear equations by pseudo-time stepping.
@@ -165,14 +171,13 @@ class IncrementalSolver:
         self.controller = controller if controller is not None else Controller(0.1)
         self.controller_reset = controller_reset
         self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
-        # self.terminated = terminated if terminated is not None else (
-        #         CriterionP(lambda p: p.y, ge, 1.0) | CriterionP(lambda p: p.y, le, -1.0))
         self.__name__ = name
+        self.history = []
 
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
-    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None, terminated = None) -> Tuple[List[Point], List[List[Point]]]:
+    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None, terminated = None) -> Out:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -204,6 +209,8 @@ class IncrementalSolver:
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
         y = 0.0
+        time = [y]
+
 
         while True:
 
@@ -247,6 +254,7 @@ class IncrementalSolver:
                     dy, iterates, y))
 
             equilibrium_solutions.append(p)  # append equilibrium solution to storage
+            time.append(float(y))
 
             iterative_counter += iterates  # add iterates of current search to counter
             tries_storage.append(tries)  # store tries of current increment to storage
@@ -272,6 +280,11 @@ class IncrementalSolver:
         if self.controller_reset:
             self.controller.reset()
 
-        return equilibrium_solutions, tries_storage
+        self.out = Out()
+        self.out.solutions = equilibrium_solutions
+        self.out.tries = tries_storage
+        self.out.time = time
+        self.history.append(self.out)
+        return self.out
 
 

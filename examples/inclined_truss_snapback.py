@@ -43,12 +43,13 @@ if __name__ == "__main__":
 
     stepper = IncrementalSolver(solver, controller)
 
-    solution = stepper()[0]
+    out = stepper()
 
     # PLOTTING
 
     # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
-    plotter(solution, 0, 1)
-    plotter(solution, 1,1, 'bo-')
+
+    plt.plot([i.q[0] for i in out.solutions], [i for i in out.time], 'ko-')
+    plt.plot([i.q[1] for i in out.solutions], [i for i in out.time], 'bo-')
 
     plt.show()

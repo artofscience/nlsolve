@@ -38,7 +38,7 @@ dp0 = solver([p0])[0]
 steppah = IncrementalSolver(solver)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0)[0]
+out = steppah(p0 + dp0)
 
 fig, ax1 = plt.subplots()
 
@@ -52,8 +52,8 @@ ax2.tick_params(axis='y', labelcolor='blue')
 
 # plot
 
-ax1.plot([i.q[2] for i in solution], [i.q[2] for i in solution], 'ko-')
-ax2.plot([i.q[2] for i in solution], [i.f[2] for i in solution], 'ro--')
+ax1.plot([i.q[2] for i in out.solutions], [i.q[2] for i in out.solutions], 'ko-')
+ax2.plot([i.q[2] for i in out.solutions], [i.f[2] for i in out.solutions], 'ro--')
 
 
 plt.show()

@@ -16,30 +16,30 @@ solver = IterativeSolver(problem)
 stepper = IncrementalSolver(solver, controller)
 
 # STEP 0: NR WITH LOAD TERMINATION
-solution0 = stepper()[0]
+out0 = stepper()
 
 # STEP 1: ARCLENGTH WITH LOAD TERMINATION
-solution1 = stepper(constraint=GeneralizedArcLength())[0]
+out1 = stepper(constraint=GeneralizedArcLength())
 
 # STEP 2: ARCLENGTH WITH EIGENVALUE TERMINATION
-solution2 = stepper(terminated=EigenvalueTermination(-0.4, 0.01))[0]
+out2 = stepper(terminated=EigenvalueTermination(-0.4, 0.01))
 
 # STEP 3: NR WITH LOAD TERMINATION
 # STARTING FROM SOLUTION2
-solution3 = stepper(solution2[-1], constraint=NewtonRaphson(), terminated=LoadTermination(1.0, 0.1))[0]
+out3 = stepper(out2.solutions[-1], constraint=NewtonRaphson(), terminated=LoadTermination(1.0, 0.1))
 
 ### PLOTTING
-plotter(solution0, 0, 1, 'ko--')
-plotter(solution0, 1, 1, 'ko--')
+plotter(out0.solutions, 0, 1, 'ko--')
+plotter(out0.solutions, 1, 1, 'ko--')
 
-plotter(solution1, 0, 1, 'ko-')
-plotter(solution1, 1, 1, 'ko-')
+plotter(out1.solutions, 0, 1, 'ko-')
+plotter(out1.solutions, 1, 1, 'ko-')
 
-plotter(solution2, 0, 1, 'ro-')
-plotter(solution2, 1, 1, 'go-')
+plotter(out2.solutions, 0, 1, 'ro-')
+plotter(out2.solutions, 1, 1, 'go-')
 
-plotter(solution3, 0, 1, 'co--')
-plotter(solution3, 1, 1, 'yo--')
+plotter(out3.solutions, 0, 1, 'co--')
+plotter(out3.solutions, 1, 1, 'yo--')
 
 ### END POTTING
 
