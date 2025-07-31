@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from utils import Point, Problem
 import logging
 import operator
-from operator import lt, ge
+from operator import lt, ge, gt
 from typing import List, Tuple
 
 
@@ -252,6 +252,5 @@ def residual_norm(threshold, name: str ="Residual norm", logging_level: int = lo
     return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold, name=name, logging_level=logging_level)
 
 def divergence_default():
-    return CriterionYH(
-    lambda x, y: abs(y) - abs(x), lt, 0.0,
-    name="DAL", logging_level=logging.DEBUG)
+    return (CriterionYH(lambda x, y: abs(y) - abs(x), lt, 0.0)
+    & CriterionXH(lambda nlf, p, p_old: np.linalg.norm(nlf.r(p)) - np.linalg.norm(nlf.r(p_old)), gt, 0, logging_level=logging.ERROR))
