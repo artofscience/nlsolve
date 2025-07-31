@@ -10,14 +10,12 @@ from controllers import Adaptive
 
 
 nlf = StructureFromCurve("csv_files/jumper.csv")
-problem = Problem(nlf, ixf=[0, 1], ff=np.array([3, 0]))
+problem = Problem(nlf, ixf=[0 , 1], ff=np.array([3, 0]))
 solver = IterativeSolver(problem, GeneralizedArcLength())
-controller = Adaptive(value=0.3, decr=0.5, incr=1.5, min=1e-6)
+controller = Adaptive(value=0.1, decr=0.1, incr=1.5, min=0.0001, max=0.2)
 stepper = IncrementalSolver(solver, controller,
-                            terminated=EigenvalueChangeTermination(0.01),
+                            terminated=EigenvalueChangeTermination(),
                             controller_reset=False)
-
-termination = EigenvalueChangeTermination(0.01)
 
 out = stepper()
 plotter(out.solutions, 0, 0, 'ko-')
