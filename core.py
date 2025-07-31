@@ -47,7 +47,7 @@ class IterativeSolver:
         """
 
         # create some aliases for commonly used functions
-        self.converged = converged if converged is not None else residual_norm(1e-6)
+        self.converged = converged if converged is not None else residual_norm(1e-10)
         self.diverged = diverged if diverged is not None else divergence_default()
         self.nlf: Problem = nlf  # nonlinear system of equations
         self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
