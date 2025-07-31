@@ -18,7 +18,7 @@ from constraints import GeneralizedArcLength
 from controllers import Adaptive
 
 
-nlf = StructureFromSpringableModelFile("von_mises_spring_truss.csv")
+nlf = StructureFromSpringableModelFile("csv_files/von_mises_spring_truss.csv")
 problem = Problem(nlf, ixp=nlf.get_default_ixp(), ixf=nlf.get_default_ixf(), ff=nlf.get_default_ff(), qp=nlf.get_default_qp())
 solver = IterativeSolver(problem, GeneralizedArcLength())
 controller = Adaptive(value=0.3, decr=0.5, incr=1.3, min=0.0001)
