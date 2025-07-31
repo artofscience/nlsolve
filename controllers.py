@@ -38,9 +38,9 @@ class Adaptive(Controller):
     taking into account preset minimum and maximum values.
     """
 
-    def __init__(self, value: float = 0.1, name: str = None, logging_level: int = logging.DEBUG,
-                 incr: float = 2.0, decr: float = 0.5,
-                 min: float = 0.01, max: float = 1.0) -> None:
+    def __init__(self, value: float = 0.05, name: str = None, logging_level: int = logging.DEBUG,
+                 incr: float = 1.1, decr: float = 0.1,
+                 min: float = 0.0001, max: float = 0.3) -> None:
         super().__init__(value, name, logging_level)
         self.incr = incr
         self.decr = decr

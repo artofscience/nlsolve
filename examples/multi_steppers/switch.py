@@ -26,7 +26,8 @@ out2 = stepper(terminated=EigenvalueTermination(-0.4, 0.01))
 
 # STEP 3: NR WITH LOAD TERMINATION
 # STARTING FROM SOLUTION2
-out3 = stepper(out2.solutions[-1], constraint=NewtonRaphson(), terminated=LoadTermination(1.0, 0.1))
+out3 = stepper(out2.solutions[-1], constraint=NewtonRaphson(), terminated=LoadTermination(2.0, 0.1))
+
 
 ### PLOTTING
 plotter(out0.solutions, 0, 1, 'ko--')
