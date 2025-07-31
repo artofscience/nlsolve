@@ -26,7 +26,6 @@ plotter(solution0.solutions, 0, 1, 'bo--')
 
 pswitch = deepcopy(solution0.solutions[-1])
 
-constraint.direction = False
 solution1 = stepper(pswitch, terminated=EigenvalueChangeTermination())
 
 
@@ -35,7 +34,6 @@ plotter(solution1.solutions, 0, 1, 'go--')
 
 pswitch = deepcopy(solution1.solutions[-1])
 
-constraint.direction = True
 solution2 = stepper(pswitch, terminated=LoadTermination())
 
 

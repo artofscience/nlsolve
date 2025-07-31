@@ -143,7 +143,8 @@ class ArcLength(Constraint):
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
 
-    def select_root_corrector(self, nlf: Problem, dp: Point, cps: List[Point], y) -> float:
+    @staticmethod
+    def select_root_corrector(nlf: Problem, dp: Point, cps: List[Point], y) -> float:
         """
         This rule is based on the projections of the generalized correction vectors on the previous correction [Vasios, 2015].
         The corrector that forms the closest correction to the previous point is chosen.

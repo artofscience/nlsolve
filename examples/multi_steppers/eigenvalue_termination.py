@@ -16,7 +16,7 @@ solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
 controller = Adaptive(0.5, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
 stepper = IncrementalSolver(solver, controller=controller)
-
+#
 # first solve for load termination
 decision = LoadTermination(1.0, 0.01)
 

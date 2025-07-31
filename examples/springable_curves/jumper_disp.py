@@ -16,16 +16,15 @@ solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-10))
 controller = Adaptive(value=0.1, decr=0.1, incr=1.5, min=0.0001, max=0.2)
 stepper = IncrementalSolver(solver, controller,
                             terminated=EigenvalueChangeTermination(),
-                            controller_reset=False)
+                            controller_reset=False,
+                            history_dependence=True)
 
-out = stepper()
-plotter(out.solutions, 0, 0, 'ko-')
+stepper()
+stepper.step()
+stepper.step(terminated=LoadTermination())
 
-solver.constraint.direction = False
-out = stepper(out.solutions[-1])
-plotter(out.solutions, 0, 0, 'bo-')
-
-solver.constraint.direction = True
-out = stepper(out.solutions[-1], terminated=LoadTermination())
-plotter(out.solutions, 0, 0, 'ro-')
+h = stepper.history
+plotter(h[0].solutions, 0, 0, 'ko-')
+plotter(h[1].solutions, 0, 0, 'bo-')
+plotter(h[2].solutions, 0, 0, 'ro-')
 plt.show()

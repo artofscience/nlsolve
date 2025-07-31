@@ -158,7 +158,8 @@ class IncrementalSolver:
                  controller_reset: bool = True,
                  time_reset: bool = True,
                  y: float = 0.0,
-                 terminated = LoadTermination()) -> None:
+                 terminated = LoadTermination(),
+                 history_dependence: bool = False) -> None:
         """
         Initialization of the incremental solver.
 
@@ -183,6 +184,8 @@ class IncrementalSolver:
         self.y = y
         self.time_reset = time_reset
 
+        self.history_dependence = history_dependence
+
         # termination
         self.maximum_increments: int = maximum_increments
         self.terminated = terminated
@@ -193,6 +196,13 @@ class IncrementalSolver:
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
         self.history = []
+
+    def step(self, controller: Controller = None,
+                 constraint: Constraint = None,
+                 terminated = None,
+                 time_reset: bool = None,
+                 controller_reset: bool = None):
+        return self.__call__(self.out.solutions[-1], controller, constraint, terminated, time_reset, controller_reset)
 
 
     def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None,
@@ -262,7 +272,9 @@ class IncrementalSolver:
                 try:
                     incremental_tries += 1
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
-                    dp, dy, iterates, tries = self.solution_method(equilibrium_solutions, self.controller.value)
+
+                    a = [self.history[-1].solutions[-2]] + equilibrium_solutions if len(self.history) and self.history_dependence else equilibrium_solutions
+                    dp, dy, iterates, tries = self.solution_method(a, self.controller.value)
                     iterative_tries += iterates
                     self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, self.y, dy)
                     if self.terminated.exceed and not self.terminated.accept:
