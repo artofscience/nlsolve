@@ -1,18 +1,24 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+from decision_criteria import EigenvalueChangeTermination
 from structure_from_curve import StructureFromCurve
 from utils import Problem, plotter
 from core import IterativeSolver, IncrementalSolver
-from constraints import ArcLength
+from constraints import GeneralizedArcLength
 from controllers import Adaptive
 
 
 nlf = StructureFromCurve("csv_files/jumper.csv")
-problem = Problem(nlf, ixf=[0, 1], ff=np.array([3, 0]))
-solver = IterativeSolver(problem, ArcLength())
-stepper = IncrementalSolver(solver, Adaptive(value=0.3, decr=0.9, incr=1.3))
-out = stepper()
+problem = Problem(nlf, ixf=[0, 1], ff=np.array([1, 0]))
+solver = IterativeSolver(problem, GeneralizedArcLength())
+controller = Adaptive(value=0.3, decr=0.5, incr=1.5)
+stepper = IncrementalSolver(solver, controller, controller_reset=False)
 
-plotter(out.solutions, 0, 0)
+out = stepper(terminated=EigenvalueChangeTermination())
+plotter(out.solutions, 0, 0, 'ko-')
+
+solver.constraint.direction = False
+out = stepper(out.solutions[-1])
+plotter(out.solutions, 0, 0, 'bo-')
 plt.show()
