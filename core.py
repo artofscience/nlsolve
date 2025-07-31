@@ -157,7 +157,8 @@ class IncrementalSolver:
                  maximum_increments: int = 1000,
                  controller_reset: bool = True,
                  time_reset: bool = True,
-                 y: float = 0.0) -> None:
+                 y: float = 0.0,
+                 terminated = LoadTermination()) -> None:
         """
         Initialization of the incremental solver.
 
@@ -184,6 +185,7 @@ class IncrementalSolver:
 
         # termination
         self.maximum_increments: int = maximum_increments
+        self.terminated = terminated
 
         # logging
         self.__name__ = name
@@ -193,7 +195,8 @@ class IncrementalSolver:
         self.history = []
 
 
-    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None, terminated = None,
+    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None,
+                 terminated = None,
                  time_reset: bool = None,
                  controller_reset: bool = None) -> Out:
         """
@@ -204,7 +207,8 @@ class IncrementalSolver:
         :param controller: controller of the pseud-time step size
         :return: a list of equilibrium solutions (Points), and a list of lists of attempted points
         """
-        self.terminated = terminated if terminated is not None else LoadTermination()
+        if terminated:
+            self.terminated = terminated
 
         if controller is not None:
             self.controller = controller
