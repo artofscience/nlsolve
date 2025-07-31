@@ -40,7 +40,7 @@ class EigenvalueTermination(DecisionCriterium):
         return min(eigvals(problem.kff(p)))
 
 class EigenvalueChangeTermination:
-    def __init__(self, margin: float = 0.001):
+    def __init__(self, margin: float = 0.1):
         self.margin = margin
         self.change = False
 
