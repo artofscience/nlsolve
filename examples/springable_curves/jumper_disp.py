@@ -2,12 +2,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from criteria import LoadTermination
-from decision_criteria import EigenvalueChangeTermination
 from structure_from_springable import StructureFromCurve
 from utils import Problem, plotter
 from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
+from criteria import EigenvalueChangeTermination, termination_default
 
 
 nlf = StructureFromCurve("csv_files/jumper.csv")
@@ -20,7 +20,7 @@ stepper = IncrementalSolver(solver, controller,
 
 stepper()
 stepper.step()
-stepper.step(terminated=LoadTermination())
+stepper.step(terminated=termination_default())
 
 h = stepper.history
 plotter(h[0].solutions, 0, 0, 'ko-')

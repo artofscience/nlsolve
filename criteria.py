@@ -5,6 +5,8 @@ import logging
 import operator
 from operator import lt, ge, gt
 from typing import List, Tuple
+from numpy.linalg import eigvals
+
 
 
 from logger import CustomFormatter, create_logger
@@ -75,7 +77,6 @@ class CriterionBase(ABC):
         """
         return Criteria(self, lambda: True, operator.__ne__)
 
-    @abstractmethod
     def reset(self):
         """
         Function that resets some class attributes, such that instance can be reused.
@@ -126,17 +127,49 @@ class Criteria(CriterionBase, ABC):
         self.right.reset()
 
 class LoadTermination(TerminationCriterion):
-    def __init__(self, threshold: float = 1.0, margin: float = 1.0):
+    def __init__(self, operator: Callable = gt, threshold: float = 1.0, margin: float = 1.0):
         super().__init__()
+        self.operator = operator
         self.threshold = threshold
         self.margin = margin
 
     def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
-        self.exceed = (y > self.threshold)
+        self.exceed = self.operator(y, self.threshold)
         self.accept = self.exceed and (abs(y - self.threshold) < self.margin)
 
-    def reset(self):
-        pass
+
+class EigenvalueTermination(TerminationCriterion):
+    def __init__(self, operator: Callable = lt, threshold: float = 0.0, margin: float = 0.1):
+        super().__init__()
+        self.operator = operator
+        self.threshold = threshold
+        self.margin = margin
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        value = min(eigvals(problem.kff(p[-1] + dp)))
+        self.exceed = self.operator(value, self.threshold)
+        self.accept = self.exceed and (abs(value - self.threshold) < self.margin)
+
+
+class EigenvalueChangeTermination(TerminationCriterion):
+    def __init__(self, margin: float = 0.1):
+        super().__init__()
+        self.margin = margin
+        self.change = False
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        point = p[-1] + dp
+
+        mu0 = sum(eigvals(problem.kff(p[-1])) < 0)
+
+        eigs = eigvals(problem.kff(point))
+        mu1 = sum(eigs < 0)
+
+        value = min(abs(eigs))
+
+        self.change = (mu0 != mu1)
+        self.exceed = self.change and value > self.margin
+        self.accept = self.change and value < self.margin
 
 class TerminationCriteria(TerminationCriterion, ABC):
     def __init__(self, left, right, op,
@@ -302,3 +335,6 @@ def residual_norm(threshold, name: str ="Residual norm", logging_level: int = lo
 def divergence_default():
     return (CriterionYH(lambda x, y: abs(y) - abs(x), lt, 0.0, logging_level=logging.ERROR)
     & CriterionXH(lambda nlf, p, p_old: np.linalg.norm(nlf.r(p)) - np.linalg.norm(nlf.r(p_old)), gt, 0, logging_level=logging.ERROR))
+
+def termination_default(threshold: float = 1.0, margin: float = 0.01):
+    return LoadTermination(gt, threshold, margin) or LoadTermination(lt, -threshold, margin)

@@ -7,10 +7,10 @@ from copy import deepcopy
 from constraints import GeneralizedArcLength
 from controllers import Adaptive, Controller
 from core import IncrementalSolver, IterativeSolver
-from decision_criteria import EigenvalueTermination, EigenvalueChangeTermination
-from criteria import LoadTermination
+from criteria import LoadTermination, EigenvalueChangeTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
 from utils import Problem, Point, plotter
+from operator import gt
 
 problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0], ff=np.array([0]), ixp=[1], qp=np.array([1]))
 controller = Adaptive(0.01, incr=1.3, decr=0.1, min=0.00001)
@@ -35,7 +35,7 @@ plotter(out2.solutions, 0, 1, 'go--')
 
 pswitch = deepcopy(out2.solutions[-1])
 
-out3 = stepper(pswitch, terminated=LoadTermination(6, 0.01))
+out3 = stepper(pswitch, terminated=LoadTermination(gt,6, 0.01))
 
 plotter(out3.solutions, 1, 1, 'ro--')
 plotter(out3.solutions, 0, 1, 'co--')

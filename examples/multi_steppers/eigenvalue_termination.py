@@ -4,10 +4,10 @@ from matplotlib import pyplot as plt
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
-from criteria import residual_norm
-from decision_criteria import EigenvalueTermination
+from criteria import residual_norm, EigenvalueTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
 from utils import Problem, plotter
+from operator import lt
 
 problem = Problem(InclinedTrussSnapback(), ixf=[0, 1], ff=np.array([0, 0.5]))
 
@@ -24,7 +24,7 @@ plotter(out.solutions, 0, 1, 'ko-')
 plotter(out.solutions, 1, 1, 'bo-')
 
 # then solve for eigenvalue termination
-decision = EigenvalueTermination(-0.2, 0.01)
+decision = EigenvalueTermination(lt, -0.2, 0.01)
 
 out = stepper(terminated=decision)
 

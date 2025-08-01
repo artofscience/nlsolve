@@ -24,7 +24,7 @@ class TerminationError(Exception):
 
 import logging
 
-from criteria import Counter, CriterionP, residual_norm, divergence_default, LoadTermination
+from criteria import Counter, residual_norm, divergence_default, termination_default
 
 
 class IterativeSolver:
@@ -155,7 +155,7 @@ class IncrementalSolver:
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000,
                  y: float = 0.0,
-                 terminated = LoadTermination(),
+                 terminated = termination_default(),
                  reset: bool = True) -> None:
         """
         Initialization of the incremental solver.
