@@ -41,7 +41,6 @@ class Counter:
         self.count += 1
         return self.count > self.threshold
 
-
 class CriterionBase(ABC):
     """
     Abstract class to setup a termination criterium (convergence, divergence).
@@ -84,7 +83,22 @@ class CriterionBase(ABC):
         """
         pass
 
-class Criteria(CriterionBase):
+class TerminationCriterion(CriterionBase, ABC):
+
+    @abstractmethod
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        pass
+
+    def __and__(self, other):
+        return TerminationCriteria(self, other, operator.__and__)
+
+    def __or__(self, other):
+        return TerminationCriteria(self, other, operator.__or__)
+
+    def __invert__(self):
+        return TerminationCriteria(self, lambda: False, operator.__ne__)
+
+class Criteria(CriterionBase, ABC):
     """A boolean combination of two ``Criterion`` instances.
 
     This class keeps track of two criteria, e.g. "left" and "right". These are
@@ -105,6 +119,40 @@ class Criteria(CriterionBase):
         if done:
             self.logger.info("Combined criteria satisfied")
         return done
+
+    def reset(self):
+        """Ensure both criteria are reset."""
+        self.left.reset()
+        self.right.reset()
+
+class LoadTermination(TerminationCriterion):
+    def __init__(self, threshold: float = 1.0, margin: float = 1.0):
+        super().__init__()
+        self.threshold = threshold
+        self.margin = margin
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        self.exceed = (y > self.threshold)
+        self.accept = self.exceed and (abs(y - self.threshold) < self.margin)
+
+    def reset(self):
+        pass
+
+class TerminationCriteria(TerminationCriterion, ABC):
+    def __init__(self, left, right, op,
+                 name: str = None, logging_level: int = logging.INFO):
+        super().__init__(name, logging_level)
+        self.left, self.right = left, right
+        self.operator = op
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        """Ensure both criteria are called when called."""
+        self.left(problem, p, dp, y, dy)
+        self.right(problem, p, dp, y, dy)
+        self.exceed = self.operator(self.left.exceed, self.right.exceed)
+        self.accept = self.operator(self.left.accept, self.right.accept)
+        if self.exceed and self.accept:
+            self.logger.info("Combined termination criteria satisfied")
 
     def reset(self):
         """Ensure both criteria are reset."""

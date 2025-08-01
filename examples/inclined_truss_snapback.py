@@ -7,7 +7,7 @@ from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
 from utils import Problem, Point, plotter
 from controllers import Adaptive
-from criteria import residual_norm
+from criteria import residual_norm, LoadTermination
 
 """
 Analysis of two-DOF inclined truss with severe snapback behaviour.

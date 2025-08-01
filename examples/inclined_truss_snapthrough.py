@@ -7,7 +7,7 @@ from constraints import GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
 from utils import Problem, Point, plotter
 from controllers import Adaptive
-from criteria import residual_norm
+from criteria import residual_norm, LoadTermination
 
 """
 Analysis of single-DOF inclined truss with snapthrough behaviour.

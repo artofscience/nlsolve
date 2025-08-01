@@ -24,8 +24,7 @@ class TerminationError(Exception):
 
 import logging
 
-from criteria import Counter, CriterionP, residual_norm, divergence_default
-from decision_criteria import LoadTermination
+from criteria import Counter, CriterionP, residual_norm, divergence_default, LoadTermination
 
 
 class IterativeSolver:
@@ -257,7 +256,7 @@ class IncrementalSolver:
                     predictor_solutions = [self.history[-1].solutions[-2]] + equilibrium_solutions if len(self.history) and not self.reset else equilibrium_solutions
                     dp, dy, iterates, tries = self.solution_method(predictor_solutions, self.controller.value)
                     iterative_tries += iterates
-                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, self.y, dy)
+                    self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, self.y + dy, dy)
                     if self.terminated.exceed and not self.terminated.accept:
                         raise TerminationError("Threshold exceeded, but step not accepted: reduce step size!", iterates)
                     else:
@@ -280,6 +279,8 @@ class IncrementalSolver:
 
             p = p + dp  # add incremental state to current state (if equilibrium found)
             self.y += dy
+
+            print(self.y)
 
             self.logger.debug(
                 "New equilibrium point found at dy = %+f in %d iterates, new y = %+f " % (

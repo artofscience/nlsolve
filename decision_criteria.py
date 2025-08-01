@@ -5,6 +5,25 @@ from utils import Problem, Point
 from numpy.linalg import eigvals
 from abc import ABC, abstractmethod
 from operator import lt, gt
+import logging
+from criteria import CriterionBase, Criteria
+
+
+# class TerminationCriteria(Criteria):
+#     """A boolean combination of two ``Criterion`` instances of type termination.
+#
+#     This class keeps track of two criteria, e.g. "left" and "right". These are
+#     combined given the provided operator, typically ``__and__`` or ``__or__``.
+#     This class simplifies chaining of various boolean operations with multiple
+#     (sub)classes from ``Criterion``.
+#     """
+#
+#     def __call__(self, problem: Problem, p: Point, ddy: float) -> bool:
+#         """Ensure both criteria are called when called."""
+#         done = self.operator(bool(self.left(problem, p, ddy)), bool(self.right(problem, p, ddy)))
+#         if done:
+#             self.logger.info("Combined criteria satisfied")
+#         return done
 
 class DecisionCriterium(ABC):
     def __init__(self, threshold: float = 1.0, operator: Callable = ge, nmargin: float = 0.0, pmargin: float = 0.0):
@@ -57,3 +76,4 @@ class EigenvalueChangeTermination:
         self.change = (mu0 != mu1)
         self.exceed = self.change and value > self.margin
         self.accept = self.change and value < self.margin
+
