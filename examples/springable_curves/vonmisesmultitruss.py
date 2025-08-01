@@ -14,17 +14,23 @@ from utils import Problem, plotter
 from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
-
+from criteria import EigenvalueChangeTermination, termination_default
+from itertools import cycle
 
 nlf = StructureFromSpringableModelFile("csv_files/von_mises_multi_truss.csv")
-problem = Problem(nlf, ixp=nlf.get_default_ixp(), ixf=nlf.get_default_ixf(), ff=nlf.get_default_ff(), qp=nlf.get_default_qp())
+problem = Problem(nlf, ixp=nlf.get_default_ixp(), ixf=nlf.get_default_ixf(), ff=nlf.get_default_ff(),
+                  qp=nlf.get_default_qp())
 solver = IterativeSolver(problem, GeneralizedArcLength())
 controller = Adaptive(value=0.1, decr=0.5, incr=1.3, min=0.0001, max=0.2)
-stepper = IncrementalSolver(solver, controller)
 
-out = stepper()
-plotter(out.solutions, 4, 4)
+load = termination_default()
+criterion = load | EigenvalueChangeTermination()
+stepper = IncrementalSolver(solver, controller, terminated=criterion, reset=False)
 
+while not load.exceed:
+    stepper()
 
-
+colours = cycle(['black', 'red', 'green', 'blue'])
+for count, step in enumerate(stepper.history):
+    plt.plot([i.q[4] for i in step.solutions], [i.f[4] for i in step.solutions], 'ko--', color=next(colours))
 plt.show()

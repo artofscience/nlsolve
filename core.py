@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import List, Tuple
 
 from constraints import Constraint, NewtonRaphson
-from controllers import Controller
-
-from operator import ge, le
+from controllers import Controller, Adaptive
+import logging
+from criteria import Counter, residual_norm, divergence_default, termination_default
 import numpy as np
 
 from logger import CustomFormatter, create_logger
@@ -20,12 +20,6 @@ class DivergenceError(Exception):
 
 class TerminationError(Exception):
     pass
-
-
-import logging
-
-from criteria import Counter, residual_norm, divergence_default, termination_default
-
 
 class IterativeSolver:
     """
@@ -137,7 +131,6 @@ class IterativeSolver:
 
         return dp, dy, counter.count, tries
 
-
 class Out:
     def __init__(self):
         self.solutions = None
@@ -192,14 +185,8 @@ class IncrementalSolver:
 
         self.history = []
 
-    def step(self, controller: Controller = None,
-                 constraint: Constraint = None,
-                 terminated = None,
-                 reset = None):
-        return self.__call__(self.out.solutions[-1], controller, constraint, terminated, reset)
 
-
-    def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None,
+    def __call__(self, pd: Point = None, controller: Controller = None, constraint: Constraint = None,
                  terminated = None, reset = None) -> Out:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
@@ -227,7 +214,8 @@ class IncrementalSolver:
 
         time = [self.y]
 
-        p = self.p0 if p is None else p
+        p = self.p0 if self.reset or len(self.history) < 1 else self.history[-1].solutions[-1]
+        p = pd if pd is not None else p
 
         self.logger.debug("Invoking incremental solver")
 
@@ -314,5 +302,6 @@ class IncrementalSolver:
         self.out.time = time
         self.history.append(self.out)
         return self.out
+
 
 

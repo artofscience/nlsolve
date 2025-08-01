@@ -132,6 +132,8 @@ class ExceedThresholdTermination(TerminationCriterion, ABC):
         self.operator = operator
         self.threshold = threshold
         self.margin = margin
+        self.exceed = False
+        self.accept = False
 
     def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
         value = self.value(problem, p, dp, y, dy)
@@ -151,10 +153,12 @@ class EigenvalueTermination(ExceedThresholdTermination):
         return min(eigvals(problem.kff(p[-1] + dp)))
 
 class EigenvalueChangeTermination(TerminationCriterion):
-    def __init__(self, margin: float = 0.1):
+    def __init__(self, margin: float = 0.01):
         super().__init__()
         self.margin = margin
         self.change = False
+        self.exceed = False
+        self.accept = False
 
     def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
         point = p[-1] + dp
@@ -176,6 +180,8 @@ class TerminationCriteria(TerminationCriterion, ABC):
         super().__init__(name, logging_level)
         self.left, self.right = left, right
         self.operator = op
+        self.exceed = False
+        self.accept = False
 
     def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
         """Ensure both criteria are called when called."""
@@ -336,4 +342,4 @@ def divergence_default():
     & CriterionXH(lambda nlf, p, p_old: np.linalg.norm(nlf.r(p)) - np.linalg.norm(nlf.r(p_old)), gt, 0, logging_level=logging.ERROR))
 
 def termination_default(threshold: float = 1.0, margin: float = 0.01):
-    return LoadTermination(gt, threshold, margin) or LoadTermination(lt, -threshold, margin)
+    return LoadTermination(gt, threshold, margin) | LoadTermination(lt, -threshold, margin)

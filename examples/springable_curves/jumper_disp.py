@@ -14,13 +14,14 @@ nlf = StructureFromCurve("csv_files/jumper.csv")
 problem = Problem(nlf, ixp=[0], ixf=[1], ff=np.array([0]), qp=np.array([3]))
 solver = IterativeSolver(problem, GeneralizedArcLength())
 controller = Adaptive(value=0.1, decr=0.1, incr=1.5, min=0.0001, max=0.2)
+
+criterion = termination_default() | EigenvalueChangeTermination(0.1)
 stepper = IncrementalSolver(solver, controller,
-                            terminated=EigenvalueChangeTermination(),
+                            terminated=criterion,
                             reset=False)
 
-stepper()
-stepper.step()
-stepper.step(terminated=termination_default())
+while not criterion.left.exceed:
+    stepper()
 
 h = stepper.history
 plotter(h[0].solutions, 0, 0, 'ko-')

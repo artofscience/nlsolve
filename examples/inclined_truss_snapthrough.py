@@ -31,13 +31,10 @@ class InclinedTruss:
 if __name__ == "__main__":
 
     truss = InclinedTruss(pi / 3)
-    problem = Problem(truss, ixf=[0], ff=np.array([-1]))
+    problem = Problem(truss, ixf=[0], ff=np.array([1]))
     solver = IterativeSolver(problem, GeneralizedArcLength())
     controller = Adaptive(0.05, max=0.5, incr=1.2, decr=0.2, min=0.001)
     stepper = IncrementalSolver(solver, controller)
-
-    criteria = LoadTermination(gt, 1.0, 0.01) or LoadTermination(lt, -1.0, 0.01)
-
-    out = stepper(terminated=criteria)
+    out = stepper()
     plotter(out.solutions, 0, 0)
     plt.show()
