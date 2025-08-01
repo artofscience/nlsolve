@@ -126,7 +126,7 @@ class Criteria(CriterionBase, ABC):
         self.left.reset()
         self.right.reset()
 
-class LoadTermination(TerminationCriterion):
+class ExceedThresholdTermination(TerminationCriterion, ABC):
     def __init__(self, operator: Callable = gt, threshold: float = 1.0, margin: float = 1.0):
         super().__init__()
         self.operator = operator
@@ -134,22 +134,21 @@ class LoadTermination(TerminationCriterion):
         self.margin = margin
 
     def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
-        self.exceed = self.operator(y, self.threshold)
-        self.accept = self.exceed and (abs(y - self.threshold) < self.margin)
-
-
-class EigenvalueTermination(TerminationCriterion):
-    def __init__(self, operator: Callable = lt, threshold: float = 0.0, margin: float = 0.1):
-        super().__init__()
-        self.operator = operator
-        self.threshold = threshold
-        self.margin = margin
-
-    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
-        value = min(eigvals(problem.kff(p[-1] + dp)))
+        value = self.value(problem, p, dp, y, dy)
         self.exceed = self.operator(value, self.threshold)
         self.accept = self.exceed and (abs(value - self.threshold) < self.margin)
 
+    @abstractmethod
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        pass
+
+class LoadTermination(ExceedThresholdTermination):
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        return y
+
+class EigenvalueTermination(ExceedThresholdTermination):
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        return min(eigvals(problem.kff(p[-1] + dp)))
 
 class EigenvalueChangeTermination(TerminationCriterion):
     def __init__(self, margin: float = 0.1):
