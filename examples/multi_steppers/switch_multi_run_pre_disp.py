@@ -17,7 +17,7 @@ constraint = GeneralizedArcLength()
 
 solver = IterativeSolver(problem, constraint)
 
-stepper = IncrementalSolver(solver, controller)
+stepper = IncrementalSolver(solver, controller, reset=False)
 
 
 out = stepper(terminated=EigenvalueChangeTermination())

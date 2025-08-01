@@ -155,11 +155,9 @@ class IncrementalSolver:
                  p: Point = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000,
-                 controller_reset: bool = True,
-                 time_reset: bool = True,
                  y: float = 0.0,
                  terminated = LoadTermination(),
-                 history_dependence: bool = False) -> None:
+                 reset: bool = True) -> None:
         """
         Initialization of the incremental solver.
 
@@ -175,16 +173,14 @@ class IncrementalSolver:
 
         # controller
         self.controller = controller if controller is not None else Controller(0.1)
-        self.controller_reset = controller_reset
 
         # initial point
         self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
 
         # pseudo-time
         self.y = y
-        self.time_reset = time_reset
 
-        self.history_dependence = history_dependence
+        self.reset = reset
 
         # termination
         self.maximum_increments: int = maximum_increments
@@ -200,15 +196,12 @@ class IncrementalSolver:
     def step(self, controller: Controller = None,
                  constraint: Constraint = None,
                  terminated = None,
-                 time_reset: bool = None,
-                 controller_reset: bool = None):
-        return self.__call__(self.out.solutions[-1], controller, constraint, terminated, time_reset, controller_reset)
+                 reset = None):
+        return self.__call__(self.out.solutions[-1], controller, constraint, terminated, reset)
 
 
     def __call__(self, p: Point = None, controller: Controller = None, constraint: Constraint = None,
-                 terminated = None,
-                 time_reset: bool = None,
-                 controller_reset: bool = None) -> Out:
+                 terminated = None, reset = None) -> Out:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -217,32 +210,23 @@ class IncrementalSolver:
         :param controller: controller of the pseud-time step size
         :return: a list of equilibrium solutions (Points), and a list of lists of attempted points
         """
-        if terminated:
+        if terminated is not None:
             self.terminated = terminated
 
         if controller is not None:
             self.controller = controller
 
-        # reset controller for future use of the incremental solver with same controller
-        if controller_reset is not None:
-            if controller_reset:
-                self.controller.reset()
-        else:
-            if self.controller_reset:
-                self.controller.reset()
-
-        # reset time?
-        if time_reset is not None:
-            if time_reset:
-                self.y = 0.0
-        else:
-            if self.time_reset:
-                self.y = 0.0
-
-        time = [self.y]
-
         if constraint is not None:
             self.solution_method.constraint = constraint
+
+        if reset is not None:
+            self.reset = reset
+
+        if self.reset:
+            self.y = 0.0
+            self.controller.reset()
+
+        time = [self.y]
 
         p = self.p0 if p is None else p
 
@@ -258,9 +242,6 @@ class IncrementalSolver:
 
         tries_storage = []  # stores the attempted states of equilibrium (multiple per increment)
 
-
-
-
         while True:
 
             incremental_counter += 1
@@ -273,8 +254,8 @@ class IncrementalSolver:
                     incremental_tries += 1
                     self.logger.info("Invoking iterative solver for %d-th time to find %d-th equilibrium point" % (incremental_tries, incremental_counter))
 
-                    a = [self.history[-1].solutions[-2]] + equilibrium_solutions if len(self.history) and self.history_dependence else equilibrium_solutions
-                    dp, dy, iterates, tries = self.solution_method(a, self.controller.value)
+                    predictor_solutions = [self.history[-1].solutions[-2]] + equilibrium_solutions if len(self.history) and not self.reset else equilibrium_solutions
+                    dp, dy, iterates, tries = self.solution_method(predictor_solutions, self.controller.value)
                     iterative_tries += iterates
                     self.terminated(self.solution_method.nlf, equilibrium_solutions, dp, self.y, dy)
                     if self.terminated.exceed and not self.terminated.accept:
