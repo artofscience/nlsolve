@@ -1,7 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from decision_criteria import EigenvalueChangeTermination, LoadTermination
+from decision_criteria import EigenvalueChangeTermination
+from criteria import LoadTermination
 from structure_from_springable import StructureFromCurve
 from utils import Problem, plotter
 from core import IterativeSolver, IncrementalSolver

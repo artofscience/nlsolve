@@ -3,11 +3,10 @@ from math import pi, sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import GeneralizedArcLength, NewtonRaphson
+from constraints import GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point, plotter
+from utils import Problem
 from controllers import Adaptive
-from criteria import residual_norm, LoadTermination
 
 """
 Analysis of two-DOF inclined truss with severe snapback behaviour.

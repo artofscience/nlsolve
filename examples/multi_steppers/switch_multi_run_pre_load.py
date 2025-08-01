@@ -7,7 +7,8 @@ from copy import deepcopy
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
-from decision_criteria import LoadTermination, EigenvalueChangeTermination
+from decision_criteria import EigenvalueChangeTermination
+from criteria import LoadTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
 from utils import Problem, Point, plotter
 

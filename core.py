@@ -280,8 +280,6 @@ class IncrementalSolver:
             p = p + dp  # add incremental state to current state (if equilibrium found)
             self.y += dy
 
-            print(self.y)
-
             self.logger.debug(
                 "New equilibrium point found at dy = %+f in %d iterates, new y = %+f " % (
                     dy, iterates, self.y))

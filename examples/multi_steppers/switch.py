@@ -6,9 +6,10 @@ from matplotlib import pyplot as plt
 from constraints import GeneralizedArcLength, NewtonRaphson
 from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
-from decision_criteria import EigenvalueTermination, LoadTermination
+from decision_criteria import EigenvalueTermination
+from criteria import LoadTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
-from utils import Problem, Point, plotter
+from utils import Problem, plotter
 
 problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
 controller = Adaptive(0.01, max=0.5, incr=1.2, decr=0.1, min=0.0001)
