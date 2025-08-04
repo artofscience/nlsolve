@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple
 
-from constraints import Constraint, NewtonRaphson
+from constraints import Constraint, NewtonRaphson, GeneralizedArcLength
 from controllers import Controller, Adaptive
 import logging
 from criteria import Counter, residual_norm, divergence_default, termination_default
@@ -43,7 +43,7 @@ class IterativeSolver:
         self.converged = converged if converged is not None else residual_norm(1e-10)
         self.diverged = diverged if diverged is not None else divergence_default()
         self.nlf: Problem = nlf  # nonlinear system of equations
-        self.constraint = constraint if constraint is not None else NewtonRaphson() # constraint function used (operates on nlf)
+        self.constraint = constraint if constraint is not None else GeneralizedArcLength() # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
 
 
@@ -164,7 +164,7 @@ class IncrementalSolver:
         self.solution_method = solution_method
 
         # controller
-        self.controller = controller if controller is not None else Controller(0.1)
+        self.controller = controller if controller is not None else Adaptive()
 
         # initial point
         self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
