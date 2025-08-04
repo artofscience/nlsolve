@@ -39,8 +39,8 @@ class Adaptive(Controller):
     """
 
     def __init__(self, value: float = 0.05, name: str = None, logging_level: int = logging.DEBUG,
-                 incr: float = 1.1, decr: float = 0.1,
-                 min: float = 0.0001, max: float = 0.3) -> None:
+                 incr: float = 1.3, decr: float = 0.3,
+                 min: float = 0.0001, max: float = 0.1) -> None:
         super().__init__(value, name, logging_level)
         self.incr = incr
         self.decr = decr
