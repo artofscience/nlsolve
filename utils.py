@@ -6,9 +6,16 @@ from copy import deepcopy
 import numpy as np
 State = np.ndarray[float] | None
 from matplotlib import pyplot as plt
+from itertools import cycle
 
-def plotter(solution, idq, idf, c='ko--'):
-    plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution], c)
+
+class Plotter:
+    colours = cycle(['black', 'red', 'green', 'blue'])
+    def __call__(self, solution, idq, idf):
+        plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution],
+                 marker='o',
+                 linestyle='dashed',
+                 color=next(self.colours))
 
 def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
     """

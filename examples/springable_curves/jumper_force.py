@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 from criteria import termination_default, EigenvalueChangeTermination
 from structure_from_springable import StructureFromCurve
-from utils import Problem, plotter
+from utils import Problem, Plotter
 from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
@@ -11,23 +11,14 @@ from controllers import Adaptive
 
 nlf = StructureFromCurve("csv_files/jumper.csv")
 problem = Problem(nlf, ixf=[0 , 1], ff=np.array([3, 0]))
-solver = IterativeSolver(problem, GeneralizedArcLength())
-controller = Adaptive(value=0.1, decr=0.1, incr=1.5, min=0.0001, max=0.2)
+solver = IterativeSolver(problem)
 
 criterion = termination_default() | EigenvalueChangeTermination()
-stepper = IncrementalSolver(solver, controller,
-                            terminated=criterion,
-                            reset=False)
+stepper = IncrementalSolver(solver, terminated=criterion, reset=False)
 
-
+plotter = Plotter()
 while not criterion.left.exceed:
     stepper()
-
-h = stepper.history
-plotter(h[0].solutions, 0, 0, 'ko-')
-plotter(h[1].solutions, 0, 0, 'bo-')
-plotter(h[2].solutions, 0, 0, 'ro-')
-plotter(h[3].solutions, 0, 0, 'co-')
-plotter(h[4].solutions, 0, 0, 'go-')
+    plotter(stepper.out.solutions, 0, 0)
 
 plt.show()

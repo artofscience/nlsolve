@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 from criteria import LoadTermination
 from structure_from_springable import StructureFromCurve
-from utils import Problem, plotter
+from utils import Problem, Plotter
 from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
@@ -19,12 +19,9 @@ criterion = termination_default() | EigenvalueChangeTermination(0.1)
 stepper = IncrementalSolver(solver, controller,
                             terminated=criterion,
                             reset=False)
-
+plotter = Plotter()
 while not criterion.left.exceed:
     stepper()
+    plotter(stepper.out.solutions, 0, 0)
 
-h = stepper.history
-plotter(h[0].solutions, 0, 0, 'ko-')
-plotter(h[1].solutions, 0, 0, 'bo-')
-plotter(h[2].solutions, 0, 0, 'ro-')
 plt.show()

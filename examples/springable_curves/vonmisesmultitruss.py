@@ -1,36 +1,28 @@
-# Always run relative to the script's folder
-import os
+import os, sys
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
-
-# Add two levels up to sys.path for module imports
-import sys
 sys.path.append(os.path.abspath(os.path.join(script_dir, '../..')))
 
 from matplotlib import pyplot as plt
+import numpy as np
 
 from structure_from_springable import StructureFromSpringableModelFile
-from utils import Problem, plotter
+from utils import Problem, Plotter
 from core import IterativeSolver, IncrementalSolver
-from constraints import GeneralizedArcLength
-from controllers import Adaptive
 from criteria import EigenvalueChangeTermination, termination_default
-from itertools import cycle
 
 nlf = StructureFromSpringableModelFile("csv_files/von_mises_multi_truss.csv")
-problem = Problem(nlf, ixp=nlf.get_default_ixp(), ixf=nlf.get_default_ixf(), ff=nlf.get_default_ff(),
-                  qp=nlf.get_default_qp())
-solver = IterativeSolver(problem, GeneralizedArcLength())
-controller = Adaptive(value=0.1, decr=0.5, incr=1.3, min=0.0001, max=0.2)
+# problem = Problem(nlf, ixp=nlf.get_default_ixp(), ixf=nlf.get_default_ixf(), ff=nlf.get_default_ff(), qp=nlf.get_default_qp())
+problem = Problem(nlf, ixf=[2], ixp=[0, 1, 3, 4, 5], ff=np.array([0.0]), qp=np.array([0, 0, 0, 1, 0]))
+solver = IterativeSolver(problem)
 
-load = termination_default()
+load = termination_default(5.0)
 criterion = load | EigenvalueChangeTermination()
-stepper = IncrementalSolver(solver, controller, terminated=criterion, reset=False)
 
-while not load.exceed:
-    stepper()
+stepper = IncrementalSolver(solver, terminated=criterion, reset=False)
 
-colours = cycle(['black', 'red', 'green', 'blue'])
-for count, step in enumerate(stepper.history):
-    plt.plot([i.q[4] for i in step.solutions], [i.f[4] for i in step.solutions], 'ko--', color=next(colours))
+while not load.exceed: stepper()
+
+plotter = Plotter()
+for _, step in enumerate(stepper.history): plotter(step.solutions, 4, 4)
 plt.show()

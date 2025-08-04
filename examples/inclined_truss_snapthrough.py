@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from constraints import GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
 from criteria import LoadTermination
-from utils import Problem, plotter
+from utils import Problem, Plotter
 from controllers import Adaptive
 from operator import gt, lt
 
@@ -36,5 +36,5 @@ if __name__ == "__main__":
     controller = Adaptive(0.05, max=0.5, incr=1.2, decr=0.2, min=0.001)
     stepper = IncrementalSolver(solver, controller)
     out = stepper()
-    plotter(out.solutions, 0, 0)
+    Plotter()(out.solutions, 0, 0)
     plt.show()

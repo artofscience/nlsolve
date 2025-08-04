@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(script_dir, '../..')))
 from matplotlib import pyplot as plt
 
 from structure_from_springable import StructureFromSpringableModelFile
-from utils import Problem, plotter
+from utils import Problem, Plotter
 from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
@@ -23,7 +23,7 @@ controller = Adaptive(value=0.3, decr=0.5, incr=1.3, min=0.0001)
 stepper = IncrementalSolver(solver, controller)
 
 out = stepper()
-plotter(out.solutions, 7, 7)
+Plotter()(out.solutions, 7, 7)
 
 
 
