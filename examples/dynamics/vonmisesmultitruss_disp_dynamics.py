@@ -33,7 +33,7 @@ for _, step in enumerate(stepper.history):
 ### DYNAMICS
 pc = stepper.history[0].solutions[-1]
 dynsolver = DynamicsSolver(problem)
-sol = dynsolver(pc, m=0.1, v0=-1.0)
+sol = dynsolver(pc, alpha=1.0)
 
 ### POST-PROCESSING
 state = np.zeros((problem.n, len(sol.t)))
