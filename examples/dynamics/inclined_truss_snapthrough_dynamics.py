@@ -1,25 +1,17 @@
-from math import pi, sin
-
-from matplotlib.pyplot import figure
-from scipy.integrate import solve_ivp
 import numpy as np
 from matplotlib import pyplot as plt
 
 from core import IncrementalSolver, IterativeSolver
-from criteria import LoadTermination, EigenvalueChangeTermination, termination_default
+from criteria import EigenvalueChangeTermination, termination_default
 from utils import Problem, Plotter
-from controllers import Adaptive
-from operator import gt, lt
 from examples.inclined_truss_snapthrough import InclinedTruss
+from dynamics import DynamicsSolver
 
-def dynamics(t, x, nlf, f, c: float = 1.0, m: float = 0.1):
-    return [x[1], (f - c * x[1] - nlf.jacobian(x[0])[0] * x[0]) / m]
 
-truss = InclinedTruss(pi / 3)
-problem = Problem(truss, ixf=[0], ff=np.array([1]))
+problem = Problem(InclinedTruss(), ixf=[0], ff=np.array([1]))
 solver = IterativeSolver(problem)
 
-load = termination_default(1.0)
+load = termination_default()
 criterion = load | EigenvalueChangeTermination()
 
 stepper = IncrementalSolver(solver, terminated=criterion, reset=False)
@@ -29,17 +21,23 @@ while not load.exceed: stepper()
 plotter = Plotter()
 for _, step in enumerate(stepper.history): plotter(step.solutions, 0, 0)
 
+### DYNAMIC ANALYSIS
+pc = stepper.history[0].solutions[-1]
+dynsolver = DynamicsSolver(problem)
 
-cload = stepper.history[0].time[-1]
-cstate = stepper.history[0].solutions[-1].q[0]
+sol = dynsolver(pc)
+plt.plot(sol.y[0], dynsolver.f0 * np.ones_like(sol.t), 'm.--', markersize=50)
 
-sol = solve_ivp(dynamics, [0, 5], np.array([cstate, 0]), args=(truss, cload))
+sol = dynsolver(pc, alpha=1.01)
+plt.plot(sol.y[0], dynsolver.f0 * np.ones_like(sol.t), 'yo--')
 
-plt.plot(sol.y[0], cload * np.ones_like(sol.t), 'mo--')
+sol = dynsolver(pc, m=1.0)
+plt.plot(sol.y[0], dynsolver.f0 * np.ones_like(sol.t), 'ko--', markersize=20)
 
+sol = dynsolver(pc, m=1.0, alpha=1.02)
+plt.plot(sol.y[0], dynsolver.f0 * np.ones_like(sol.t), 'bo--')
 
-figure()
-plt.plot(sol.t, sol.y[0])
-plt.plot(sol.t, sol.y[1])
+sol = dynsolver(pc, m=1.0, v0=1.0)
+plt.plot(sol.y[0], dynsolver.f0 * np.ones_like(sol.t), 'go--')
 
 plt.show()
