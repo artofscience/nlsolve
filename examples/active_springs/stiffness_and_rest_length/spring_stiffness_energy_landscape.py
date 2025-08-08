@@ -32,13 +32,11 @@ for ixy, xyname in enumerate(xy):
 
 k, xy = np.meshgrid(k, xy)
 plt.contourf(k, xy, r, 100, cmap='jet')
-plt.scatter((k**2).flatten(), xy.flatten(), c=r.flatten())
-plt.colorbar()
 
 
 controller = Adaptive(0.01, max=0.05, incr=1.5, decr=0.2, min=0.00001)
 
-p0 = point
+p0 = Point(np.array([0, 0, 1, 1, sqrt(2), 2]), f = np.array([0, 0, 0, -0.1, 0, 0]))
 
 solver = IterativeSolver(spring, NewtonRaphson())
 dp0 = solver([p0])[0]
@@ -46,23 +44,21 @@ p0 = p0 + dp0
 
 stepper = IncrementalSolver(solver)
 
-solution, tries = stepper(p0, controller)
+out = stepper(p0, controller)
+solution = out.solutions
 
 plt.plot([i.q[-1] for i in solution], [i.q[3] for i in solution], 'ro-')
 
-plt.xlim([-2, 2])
-plt.ylim([-2, 2])
 
-spring.qpc[-1] = 1.9
-p2 = deepcopy(solution[-1])
+solver.constraint = GeneralizedArcLength()
 
 
-solver = IterativeSolver(spring, GeneralizedArcLength())
-stepper = IncrementalSolver(solver)
-solution2, _ = stepper(p2, controller)
+out2 = stepper(p0, reset=True)
+solution2 = out2.solutions
 plt.plot([i.q[-1] for i in solution2], [i.q[3] for i in solution2], 'ko-')
 
-
+# plt.xlim([0, 2])
+# plt.ylim([-2, 2])
 plt.show()
 
 

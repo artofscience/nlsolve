@@ -33,12 +33,13 @@ p0 = Point(q=np.array([0, 0, 1, 0, 0]))
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
 
-# print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 steppah = IncrementalSolver(solver)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0)[0]
+out = steppah(p0 + dp0)
+solution = out.solutions
+
 
 # plot temperature and entropy (flux)
 plt.plot([i.q[4] for i in solution], [i.q[4] for i in solution], 'ko-')
@@ -47,6 +48,9 @@ plt.plot([i.q[4] for i in solution], [i.f[4] for i in solution], 'ko--')
 # plot reaction forces on nodes
 plt.plot([i.q[4] for i in solution], [i.f[0] for i in solution], 'ro-')
 plt.plot([i.q[4] for i in solution], [i.f[2] for i in solution], 'ro--')
+
+plt.plot([i.q[4] for i in solution], [i.f[1] for i in solution], 'go-')
+plt.plot([i.q[4] for i in solution], [i.f[3] for i in solution], 'go--')
 
 plt.show()
 
