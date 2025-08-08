@@ -19,8 +19,7 @@ class DynamicsSolver:
     def dynamics(t, x, prob, q0, f, c, m):
         pos = 1.0 * q0
         pos[prob.ixf] = x[:len(x)//2] if m else x
-        elastic_force = prob.nlf.force(pos)
+        elastic_force = prob.nlf.force(pos)[prob.ixf]
         tmp = f - elastic_force # diff between external and elastic force
-        vel = x[len(x) // 2:] if m else None
-        damping_force = c * vel if m else None
-        return np.hstack((vel, (tmp - damping_force) / m)) if m else tmp / c
+        vel = x[len(x) // 2:] if m else tmp / c # velocity
+        return np.hstack((vel, (tmp - c * vel) / m)) if m else vel
