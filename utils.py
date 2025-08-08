@@ -53,12 +53,12 @@ class Problem(ABC):
         self.ixf = ixf
         self.ixp = ixp
 
-        self.ffc = ff.astype(float) if ff is not None else None
-        self.qpc = qp.astype(float) if qp is not None else None
-
         self.nf = len(self.ixf) if ixf is not None else 0
         self.np = len(self.ixp) if ixp is not None else 0
         self.n = self.nf + self.np
+
+        self.ffc = ff.astype(float) if ff is not None else np.zeros(self.nf)
+        self.qpc = qp.astype(float) if qp is not None else np.zeros(self.np)
 
         # squared norm of load external load and prescribed motion
         self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
