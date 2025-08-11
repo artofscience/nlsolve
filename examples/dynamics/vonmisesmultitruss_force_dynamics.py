@@ -28,18 +28,18 @@ for _, step in enumerate(stepper.history):
     plotter(step.solutions, 2, 4)
     plotter(step.solutions, 4, 4)
 
-### DYNAMICS
 pc = stepper.history[0].solutions[-1]
 dynsolver = DynamicsSolver(problem)
-sol = dynsolver(pc, m=1.0, v0=1.0)
+out = dynsolver(pc, m=2.0, v0=4.0)
 
-# plot dof 2
-plt.plot(sol.y[0], dynsolver.f0[1] * np.ones_like(sol.t), 'mo--')
-plt.axvline(sol.y[0][-1])
+plotter = Plotter()
+plotter(out, 4, 4)
+plotter(out, 2, 4)
 
-# plot dof 4
-plt.plot(sol.y[1], dynsolver.f0[1] * np.ones_like(sol.t), 'yo--')
-plt.axvline(sol.y[1][-1])
+pc2 = dynsolver.load_based_offset(pc)
+out = dynsolver(pc2)
 
+plotter(out, 4, 4)
+plotter(out, 2,4)
 
 plt.show()
