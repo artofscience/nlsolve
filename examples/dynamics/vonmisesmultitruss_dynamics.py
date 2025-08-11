@@ -30,11 +30,6 @@ def main(a: int = 1, max_load: float = 1.0, v0: float = 1.0):
 
     while not load.exceed: stepper()
 
-    plotter = Plotter()
-    for _, step in enumerate(stepper.history):
-        plotter(step.solutions, 2, 4)
-        plotter(step.solutions, 4, 4)
-
     pc = stepper.history[0].solutions[-1] # get first critical point
     dynsolver = DynamicsSolver(problem) # setup dynamics solver
 
@@ -42,7 +37,13 @@ def main(a: int = 1, max_load: float = 1.0, v0: float = 1.0):
 
     dynsolver(dynsolver.load_based_offset(pc)) # run solver using first order ODE with load-based offset
 
+    # POST-PROC
+
     plotter = Plotter()
+    for out in stepper.history:
+        plotter(out.solutions, 4, 4)
+        plotter(out.solutions, 2, 4)
+
     for out in dynsolver.history:
         plotter(out, 4, 4)
         plotter(out, 2, 4)
