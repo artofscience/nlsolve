@@ -1,0 +1,77 @@
+from matplotlib import pyplot as plt
+import numpy as np
+
+from constraints import GeneralizedArcLength, NewtonRaphson
+from core import IncrementalSolver, IterativeSolver
+from utils import Problem, Point
+from criteria import termination_default, EigenvalueChangeTermination
+from math import sqrt
+from spring import SpringL0K
+from dynamics import DynamicsSolver
+
+def plot_residual(p):
+    point = 1.0 * p
+    y = np.linspace(2, -2, 30)
+    k = np.linspace(4, -2, 30)
+    r = np.zeros((len(k), len(y)), dtype=float)
+
+    for ixy, xyname in enumerate(y):
+        for ik, kname in enumerate(k):
+            point.q[-1] = kname
+            point.q[3] = xyname
+            r[ixy, ik] = np.linalg.norm(spring.rf(point))
+
+    k, xy = np.meshgrid(k, y)
+    plt.contourf(k, xy, r, 100, cmap='jet')
+
+spring = Problem(SpringL0K(), ixf=[3], ixp=[0, 1, 2, 4, 5],
+                 ff=np.zeros(1), qp=np.array([0, 0, 0, 0, -2.5]))
+
+p0 = Point(np.array([0, 0, 1, 1, sqrt(2), 3]), np.array([0, 0, 0, -0.2, 0, 0]))
+
+plot_residual(p0) # plot residual to see disconnected branches
+
+# solve for equilibrium using NR
+solver = IterativeSolver(spring, NewtonRaphson())
+dp0 = solver([p0])[0]
+p0 = p0 + dp0
+
+stepper = IncrementalSolver(solver)
+
+# solve using NR
+out_NR = stepper(p0)
+
+# solve using GAL
+solver.constraint = GeneralizedArcLength()
+
+out_GAL = stepper(p0)
+
+# solve until critical point using GAL, then use dynamics, then continue
+load = termination_default()
+criterion = load | EigenvalueChangeTermination()
+
+out_GAL2 = stepper(p0, terminated=criterion)
+
+pc = stepper.history[-1].solutions[-1]  # get first critical point
+dynsolver = DynamicsSolver(spring)  # setup dynamics solver
+
+out_dyn = dynsolver(pc, m=1.0, v0=-1.0)
+
+out_GAL3 = stepper(out_dyn[-1], terminated=termination_default(0.4))
+
+plt.plot([i.q[-1] for i in out_NR.solutions], [i.q[3] for i in out_NR.solutions], 'ro-')
+plt.plot([i.q[-1] for i in out_GAL.solutions], [i.q[3] for i in out_GAL.solutions], 'ko-')
+plt.plot([i.q[-1] for i in out_GAL2.solutions], [i.q[3] for i in out_GAL2.solutions], 'co-')
+plt.plot([i.q[-1] for i in out_dyn], [i.q[3] for i in out_dyn], 'mo-')
+plt.plot([i.q[-1] for i in out_GAL3.solutions], [i.q[3] for i in out_GAL3.solutions], 'yo-')
+
+
+plt.xlim([0, 3.5])
+plt.ylim([-2, 2])
+
+plt.show()
+
+
+
+
+
