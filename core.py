@@ -156,7 +156,6 @@ class IncrementalSolver:
                  p: Point = None,
                  name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000,
-                 y: float = 0.0,
                  terminated=termination_default(),
                  reset: bool = True) -> None:
         """
@@ -178,9 +177,6 @@ class IncrementalSolver:
         # initial point
         self.p0 = p if p is not None else self.solution_method.nlf.empty_point()
 
-        # pseudo-time
-        self.y = y
-
         self.reset = reset
 
         # termination
@@ -192,10 +188,12 @@ class IncrementalSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
 
+        self.y = 0.0
+
         self.history = []
 
     def __call__(self, pd: Point = None, controller: Controller = None, constraint: Constraint = None,
-                 terminated=None, reset=None) -> Out:
+                 terminated=None, reset=None, y = None) -> Out:
         """
         The __call__ of IncrementalSolver finds a range of equilibrium points given some initial equilibrium point.
 
@@ -219,6 +217,9 @@ class IncrementalSolver:
         if self.reset:
             self.y = 0.0
             self.controller.reset()
+
+        if y is not None:
+            self.y = y
 
         time = [self.y]
 
