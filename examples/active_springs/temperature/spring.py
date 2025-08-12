@@ -1,18 +1,18 @@
-import numpy as np
 from collections.abc import Callable
-from utils import Problem
 
+import numpy as np
 
 
 class SpringT:
     """Spring where temperature T is a DOF.
     Initial length L0(T) and k(T)"""
-    def __init__(self,  l0: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+
+    def __init__(self, l0: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
                  k: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                dl0dt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                dkdt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                d2l0dt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                d2kdt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray]):
+                 dl0dt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 dkdt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 d2l0dt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 d2kdt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray]):
         self.k = k
         self.l0 = l0
         self.dl0dt = dl0dt

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+import logging
+from abc import ABC, abstractmethod
 from typing import List
 
 import numpy as np
 
-from abc import ABC, abstractmethod
-
-from utils import Problem, Point, ddp
-
 from logger import CustomFormatter, create_logger
-import logging
+from utils import Problem, Point, ddp
 
 State = np.ndarray[float] | None
 
+
 class DiscriminantError(Exception):
     pass
+
 
 class Constraint(ABC):
     def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG) -> None:
@@ -25,7 +25,7 @@ class Constraint(ABC):
         """
 
         # some aliases for commonly used functions
-        self.dl: float = dl # characteristic magnitude of constraint function (e.g. arc-length)
+        self.dl: float = dl  # characteristic magnitude of constraint function (e.g. arc-length)
 
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
@@ -75,7 +75,6 @@ class NewtonRaphson(Constraint):
         return 0.0
 
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> Point:
-
         load = 0.0
         load += nlf.qp2 if nlf.np else 0.0
         load += nlf.ff2 if nlf.nf else 0.0
@@ -84,7 +83,8 @@ class NewtonRaphson(Constraint):
 
 
 class ArcLength(Constraint):
-    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0, direction: bool = True) -> None:
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0,
+                 direction: bool = True) -> None:
         super().__init__(dl, name, logging_level)
         self.beta = beta
         self.direction = direction
@@ -155,7 +155,8 @@ class ArcLength(Constraint):
         if nlf.np:
             cpd = lambda i: np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
             if nlf.nf:
-                cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i])) + np.dot(nlf.qp(dp), nlf.qp(dp) + nlf.qp(cps[i]))
+                cpd = lambda i: np.dot(nlf.qf(dp), nlf.qf(dp) + nlf.qf(cps[i])) + np.dot(nlf.qp(dp),
+                                                                                         nlf.qp(dp) + nlf.qp(cps[i]))
 
         return y[0] if cpd(0) >= cpd(1) else y[1]
 
@@ -169,19 +170,27 @@ class ArcLength(Constraint):
 
         else:
             if nlf.nf:
-                vec1 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
-                vec2 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
+                vec1 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]),
+                                 nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                vec2 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]),
+                                 nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
 
             if nlf.np:
-                vec1 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
-                vec2 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
+                vec1 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]),
+                                 nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
+                vec2 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]),
+                                 nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
 
                 if nlf.nf:
-                    vec11 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
-                    vec12 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
+                    vec11 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[0]),
+                                      nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[0]))
+                    vec12 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[0]),
+                                      nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[0]))
                     vec1 = np.append(vec11, vec12)
-                    vec21 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]), nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
-                    vec22 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]), nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
+                    vec21 = np.append(nlf.qf(sol[-2]) - nlf.qf(p) - nlf.qf(cps[1]),
+                                      nlf.ff(sol[-2]) - nlf.ff(p) - nlf.ff(cps[1]))
+                    vec22 = np.append(nlf.qp(sol[-2]) - nlf.qp(p) - nlf.qp(cps[1]),
+                                      nlf.fp(sol[-2]) - nlf.fp(p) - nlf.fp(cps[1]))
                     vec2 = np.append(vec21, vec22)
 
             return y[0] if np.linalg.norm(vec1) > np.linalg.norm(vec2) else y[1]
@@ -218,14 +227,15 @@ class NewtonRaphsonByArcLength(ArcLength):
 
 
 class GeneralizedArcLength(ArcLength):
-    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, alpha: float = 1.0, beta: float = 1.0) -> None:
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, alpha: float = 1.0,
+                 beta: float = 1.0) -> None:
         super().__init__(dl, name, logging_level, beta)
         self.alpha = alpha
 
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
         cps = [ddp(nlf, p, ddx, i) for i in y]
-        return self.select_root_predictor(nlf, p, sol, cps, y) if self.alpha > 0.0 else y[0] # else take positive value
+        return self.select_root_predictor(nlf, p, sol, cps, y) if self.alpha > 0.0 else y[0]  # else take positive value
 
     def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         try:
@@ -277,5 +287,3 @@ class GeneralizedArcLength(ArcLength):
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
-
-

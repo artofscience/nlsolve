@@ -3,10 +3,9 @@ from matplotlib import pyplot as plt
 
 from core import IncrementalSolver, IterativeSolver
 from criteria import EigenvalueChangeTermination, termination_default
-from utils import Problem, Plotter
-from examples.inclined_truss_snapthrough import InclinedTruss
 from dynamics import DynamicsSolver
-
+from examples.inclined_truss_snapthrough import InclinedTruss
+from utils import Problem, Plotter
 
 problem = Problem(InclinedTruss(), ixf=[0], ff=np.array([1]))
 solver = IterativeSolver(problem)

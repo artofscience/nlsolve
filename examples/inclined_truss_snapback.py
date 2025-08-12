@@ -4,16 +4,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength
+from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from utils import Problem
-from controllers import Adaptive
 
 """
 Analysis of two-DOF inclined truss with severe snapback behaviour.
 """
 
+
 class InclinedTrussSnapback:
-    def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
+    def __init__(self, w: float = 0.1, theta0: float = pi / 2.5):
         self.w = w
         self.theta0 = theta0
 

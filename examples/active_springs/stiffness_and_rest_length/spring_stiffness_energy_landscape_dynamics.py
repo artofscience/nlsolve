@@ -1,13 +1,15 @@
-from matplotlib import pyplot as plt
+from math import sqrt
+
 import numpy as np
+from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point
 from criteria import termination_default, EigenvalueChangeTermination
-from math import sqrt
-from spring import SpringL0K
 from dynamics import DynamicsSolver
+from spring import SpringL0K
+from utils import Problem, Point
+
 
 def plot_residual(p):
     point = 1.0 * p
@@ -24,12 +26,13 @@ def plot_residual(p):
     k, xy = np.meshgrid(k, y)
     plt.contourf(k, xy, r, 100, cmap='jet')
 
+
 spring = Problem(SpringL0K(), ixf=[3], ixp=[0, 1, 2, 4, 5],
                  ff=np.zeros(1), qp=np.array([0, 0, 0, 0, -2.5]))
 
 p0 = Point(np.array([0, 0, 1, 1, sqrt(2), 3]), np.array([0, 0, 0, -0.2, 0, 0]))
 
-plot_residual(p0) # plot residual to see disconnected branches
+plot_residual(p0)  # plot residual to see disconnected branches
 
 # solve for equilibrium using NR
 solver = IterativeSolver(spring, NewtonRaphson())
@@ -65,13 +68,7 @@ plt.plot([i.q[-1] for i in out_GAL2.solutions], [i.q[3] for i in out_GAL2.soluti
 plt.plot([i.q[-1] for i in out_dyn], [i.q[3] for i in out_dyn], 'mo-')
 plt.plot([i.q[-1] for i in out_GAL3.solutions], [i.q[3] for i in out_GAL3.solutions], 'yo-')
 
-
 plt.xlim([0, 3.5])
 plt.ylim([-2, 2])
 
 plt.show()
-
-
-
-
-

@@ -1,14 +1,11 @@
-from matplotlib import pyplot as plt
-import numpy as np
 from logging import ERROR
 
+import numpy as np
+from matplotlib import pyplot as plt
+
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point
-from operator import le, ge
-from criteria import CriterionP
-
 from spring import Spring
-
+from utils import Problem, Point
 
 """"
 Analysis of a simple spring with fixed stiffness k and rest length l0.
@@ -37,7 +34,6 @@ spring = Problem(Spring(k, l0), ixf, ixp, ff, qp)
 # setup solver
 solver = IterativeSolver(spring)
 
-
 # initial point
 p0 = Point(q=np.array([0, 0, 1.0, 0.9]))
 
@@ -47,17 +43,16 @@ dp0 = solver([p0])[0]
 # get equilibrium point
 p0eq = p0 + dp0
 
-print("Given L0 = {}, y_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.q[3], dp0.q[3], p0.q[3] + dp0.q[3]))
+print("Given L0 = {}, y_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.q[3], dp0.q[3],
+                                                                                     p0.q[3] + dp0.q[3]))
 # setup stepper
 
 
-
 steppah = IncrementalSolver(
-    solution_method = solver,
-    name = "Stepper",
-    logging_level = ERROR,
-    maximum_increments= 15)
-
+    solution_method=solver,
+    name="Stepper",
+    logging_level=ERROR,
+    maximum_increments=15)
 
 # solve problem from equilibrium point
 solution, tries = steppah(p0eq)
@@ -78,8 +73,3 @@ ax1.plot([i.f[3] for i in solution], [i.q[3] for i in solution], 'ro-')
 ax2.plot([i.f[3] for i in solution], [i.f[0] for i in solution], 'bo-')
 
 plt.show()
-
-
-
-
-

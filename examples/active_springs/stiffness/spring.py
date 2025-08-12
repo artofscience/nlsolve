@@ -1,7 +1,9 @@
 import numpy as np
 
+
 class SpringK:
     """"Spring where stiffness k is a DOF"""
+
     def __init__(self, l0: float = 1.0):
         self.l0 = l0
 
@@ -41,9 +43,9 @@ class SpringK:
         k_matrix[:, -1] += (l - self.l0) * dldq
         k_matrix[-1, :] += (l - self.l0) * dldq
         k_matrix[:4, :4] += k * (l - self.l0) / l * np.array([[1, 0, -1, 0],
-                                                         [0, 1, 0, -1],
-                                                         [-1, 0, 1, 0],
-                                                         [0, -1, 0, 1]])
+                                                              [0, 1, 0, -1],
+                                                              [-1, 0, 1, 0],
+                                                              [0, -1, 0, 1]])
         k_matrix += -k * (l - self.l0) / l * np.outer(dldq, dldq)
         k_matrix[-1, -1] += 0
         return k_matrix

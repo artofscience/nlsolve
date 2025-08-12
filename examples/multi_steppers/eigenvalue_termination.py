@@ -1,3 +1,5 @@
+from operator import lt
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -7,7 +9,6 @@ from core import IncrementalSolver, IterativeSolver
 from criteria import residual_norm, EigenvalueTermination
 from examples.inclined_truss_snapback import InclinedTrussSnapback
 from utils import Problem, plotter
-from operator import lt
 
 problem = Problem(InclinedTrussSnapback(), ixf=[0, 1], ff=np.array([0, 0.5]))
 

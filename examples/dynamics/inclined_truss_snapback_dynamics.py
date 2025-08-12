@@ -1,10 +1,11 @@
 import numpy as np
 from matplotlib import pyplot as plt
+
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem
-from examples.inclined_truss_snapback import InclinedTrussSnapback
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
+from examples.inclined_truss_snapback import InclinedTrussSnapback
+from utils import Problem
 
 truss = InclinedTrussSnapback()
 
@@ -32,7 +33,3 @@ plt.plot(sol.y[0], dynsolver.f0[1] * np.ones_like(sol.t), 'mo--')
 plt.plot(sol.y[1], dynsolver.f0[1] * np.ones_like(sol.t), 'mo--')
 
 plt.show()
-
-
-
-

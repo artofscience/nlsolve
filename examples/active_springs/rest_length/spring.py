@@ -20,9 +20,9 @@ class SpringL0:
         dx = x0 - x1
         dy = y0 - y1
         l = np.sqrt(dx ** 2 + dy ** 2)
-        dldq =  np.array([dx, dy, -dx, -dy, 0]) / l
+        dldq = np.array([dx, dy, -dx, -dy, 0]) / l
         f = self.k * (l - l0) * dldq
-        f[-1] -=   self.k * (l - l0)
+        f[-1] -= self.k * (l - l0)
         return f
 
     def jacobian(self, q: np.ndarray) -> np.ndarray:
@@ -43,9 +43,9 @@ class SpringL0:
         k_matrix[:, -1] -= self.k * dldq
         k_matrix[-1, :] -= self.k * dldq
         k_matrix[:4, :4] += self.k * (l - l0) / l * np.array([[1, 0, -1, 0],
-                                                         [0, 1, 0, -1],
-                                                         [-1, 0, 1, 0],
-                                                         [0, -1, 0, 1]])
+                                                              [0, 1, 0, -1],
+                                                              [-1, 0, 1, 0],
+                                                              [0, -1, 0, 1]])
         k_matrix -= self.k * (l - l0) / l * np.outer(dldq, dldq)
         k_matrix[-1, -1] += self.k
         return k_matrix

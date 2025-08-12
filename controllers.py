@@ -4,8 +4,10 @@ These objects control the characteristic length of the constraint function used 
 Different controllers have different behaviour in terms of what observations are used to modify and how to modify its value.
 """
 
-from logger import CustomFormatter, create_logger
 import logging
+
+from logger import CustomFormatter, create_logger
+
 
 class Controller:
     """

@@ -1,21 +1,23 @@
-from matplotlib import pyplot as plt
-import numpy as np
 from math import sqrt
-from controllers import Controller, Adaptive
-from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point
-from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
+import numpy as np
+from matplotlib import pyplot as plt
+
+from constraints import NewtonRaphson, GeneralizedArcLength
+from controllers import Adaptive
+from core import IncrementalSolver, IterativeSolver
 from spring import SpringT
+from utils import Problem, Point
+
 
 class SpringAssembly:
     def __init__(self):
-        self.spring1 = SpringT(k = lambda T: 1, l0 = lambda T: sqrt(2),
-                 dkdt = lambda T: 1, dl0dt = lambda T:0,
-                 d2kdt2 = lambda T: 1, d2l0dt2= lambda T: 0)
-        self.spring2 = SpringT(k = lambda T: 0.1 , l0 = lambda T: 3 - 3*T,
-                 dkdt = lambda T: 0, dl0dt = lambda T: -3,
-                 d2kdt2 = lambda T: 0, d2l0dt2= lambda T: 0)
+        self.spring1 = SpringT(k=lambda T: 1, l0=lambda T: sqrt(2),
+                               dkdt=lambda T: 1, dl0dt=lambda T: 0,
+                               d2kdt2=lambda T: 1, d2l0dt2=lambda T: 0)
+        self.spring2 = SpringT(k=lambda T: 0.1, l0=lambda T: 3 - 3 * T,
+                               dkdt=lambda T: 0, dl0dt=lambda T: -3,
+                               d2kdt2=lambda T: 0, d2l0dt2=lambda T: 0)
         self.ix1 = [0, 1, 2, 3, 6]
         self.ix2 = [2, 3, 4, 5, 6]
 
@@ -28,7 +30,7 @@ class SpringAssembly:
         return f
 
     def jacobian(self, q):
-        K = np.zeros((7,7), dtype=float)
+        K = np.zeros((7, 7), dtype=float)
         K1 = self.spring1.jacobian(q[self.ix1])
         K2 = self.spring2.jacobian(q[self.ix2])
         K[np.ix_(self.ix1, self.ix1)] += K1
@@ -53,7 +55,7 @@ structure = Problem(SpringAssembly(), ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 solver = IterativeSolver(structure, NewtonRaphson())
 
 # initial point
-p0 = Point(q=np.array([0, 0, 1,0, 1, -2, 0]), f=np.array([0,0,0, 1,0,0,0]))
+p0 = Point(q=np.array([0, 0, 1, 0, 1, -2, 0]), f=np.array([0, 0, 0, 1, 0, 0, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -85,10 +87,4 @@ plt.ylabel('Position')
 plt.legend()
 plt.grid()
 
-
 plt.show()
-
-
-
-
-

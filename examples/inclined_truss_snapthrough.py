@@ -4,18 +4,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength
-from core import IncrementalSolver, IterativeSolver
-from criteria import LoadTermination
-from utils import Problem, Plotter
 from controllers import Adaptive
-from operator import gt, lt
+from core import IncrementalSolver, IterativeSolver
+from utils import Problem, Plotter
 
 """
 Analysis of single-DOF inclined truss with snapthrough behaviour.
 """
 
+
 class InclinedTruss:
-    def __init__(self, theta0: float = pi/3):
+    def __init__(self, theta0: float = pi / 3):
         self.theta0 = theta0
 
     def force(self, a):
@@ -27,9 +26,7 @@ class InclinedTruss:
                                  2 * (a ** 2 - 2 * sin(self.theta0) * a + 1) ** (3 / 2)) + 1])
 
 
-
 if __name__ == "__main__":
-
     truss = InclinedTruss(pi / 3)
     problem = Problem(truss, ixf=[0], ff=np.array([1]))
     solver = IterativeSolver(problem, GeneralizedArcLength())

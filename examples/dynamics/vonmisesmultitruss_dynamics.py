@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 sys.path.append(os.path.abspath(os.path.join(script_dir, '../..')))
@@ -12,6 +14,7 @@ from core import IterativeSolver, IncrementalSolver
 from criteria import EigenvalueChangeTermination, termination_default
 from dynamics import DynamicsSolver
 from matplotlib.pyplot import figure
+
 
 def main(a: int = 1, max_load: float = 1.0, v0: float = 1.0):
     nlf = StructureFromSpringableModelFile("../springable_curves/csv_files/von_mises_multi_truss.csv")
@@ -30,12 +33,12 @@ def main(a: int = 1, max_load: float = 1.0, v0: float = 1.0):
 
     while not load.exceed: stepper()
 
-    pc = stepper.history[0].solutions[-1] # get first critical point
-    dynsolver = DynamicsSolver(problem) # setup dynamics solver
+    pc = stepper.history[0].solutions[-1]  # get first critical point
+    dynsolver = DynamicsSolver(problem)  # setup dynamics solver
 
     dynsolver(pc, m=1.0, v0=v0)
 
-    dynsolver(dynsolver.load_based_offset(pc)) # run solver using first order ODE with load-based offset
+    dynsolver(dynsolver.load_based_offset(pc))  # run solver using first order ODE with load-based offset
 
     # POST-PROC
 

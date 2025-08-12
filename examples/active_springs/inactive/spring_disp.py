@@ -1,9 +1,9 @@
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point
 from spring import Spring
+from utils import Problem, Point
 
 """"
 Analysis of a simple spring with fixed stiffness k and rest length l0.
@@ -55,10 +55,4 @@ ax2.tick_params(axis='y', labelcolor='blue')
 ax1.plot([i.q[2] for i in out.solutions], [i.q[2] for i in out.solutions], 'ko-')
 ax2.plot([i.q[2] for i in out.solutions], [i.f[2] for i in out.solutions], 'ro--')
 
-
 plt.show()
-
-
-
-
-

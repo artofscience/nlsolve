@@ -4,6 +4,7 @@ from abc import ABC
 from copy import deepcopy
 
 import numpy as np
+
 State = np.ndarray[float] | None
 from matplotlib import pyplot as plt
 from itertools import cycle
@@ -11,11 +12,13 @@ from itertools import cycle
 
 class Plotter:
     colours = cycle(['black', 'red', 'green', 'blue'])
+
     def __call__(self, solution, idq, idf):
         plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution],
                  marker='o',
                  linestyle='dashed',
                  color=next(self.colours))
+
 
 def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
     """
@@ -38,6 +41,7 @@ def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
 
     return nlf.point(ddqf, ddqp, ddff, ddfp)
 
+
 class Problem(ABC):
     """
     Interface of a nonlinear function to the nonlinear solver.
@@ -47,6 +51,7 @@ class Problem(ABC):
     If dim(free) = 0, then dim(prescribed) > 0 and vice versa.
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
     """
+
     def __init__(self, nlf, ixf=None, ixp=None, ff=None, qp=None):
         self.nlf = nlf
 
@@ -127,7 +132,6 @@ class Problem(ABC):
 
     def fp(self, p):
         return p.f[self.ixp]
-
 
 
 class Point:

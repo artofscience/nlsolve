@@ -1,13 +1,15 @@
-from utils import Problem, Point
-from scipy.integrate import solve_ivp, RK45
 import numpy as np
+from scipy.integrate import RK45
+
+from utils import Problem, Point
+
 
 class DynamicsSolver:
     def __init__(self, problem: Problem):
         self.problem = problem
         self.history = []
 
-    def __call__(self, p0: Point, c: float = 1.0, m = None,
+    def __call__(self, p0: Point, c: float = 1.0, m=None,
                  t_start: float = 0.0, t_end: float = 1e3,
                  v0: float = 0.0, tol: float = 1e-3):
 
@@ -36,7 +38,7 @@ class DynamicsSolver:
         return t, y
 
     def get_out(self, y, p0, m):
-        n = len(y[0])//2
+        n = len(y[0]) // 2
         out = [1.0 * p0 for i in y]
         for count, element in enumerate(out):
             element.q[self.problem.ixf] = y[count][:n] if m else y[count]
@@ -51,14 +53,13 @@ class DynamicsSolver:
             point.q[self.problem.ixp] += alpha / 100 * self.problem.qpc
         return point
 
-
     @staticmethod
     def dynamics(t, x, prob, p0, c, m):
-        n = len(x)//2
+        n = len(x) // 2
         pos = 1.0 * p0.q
         pos[prob.ixf] = x[:n] if m else x
         elastic_force = prob.nlf.force(pos)[prob.ixf]
         external_load = p0.f[prob.ixf]
-        tmp = external_load - elastic_force # diff between external and elastic load
-        vel = x[n:] if m else tmp / c # velocity
+        tmp = external_load - elastic_force  # diff between external and elastic load
+        vel = x[n:] if m else tmp / c  # velocity
         return np.hstack((vel, (tmp - c * vel) / m)) if m else vel

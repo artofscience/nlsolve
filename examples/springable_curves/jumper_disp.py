@@ -1,14 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from criteria import LoadTermination
-from structure_from_springable import StructureFromCurve
-from utils import Problem, Plotter
-from core import IterativeSolver, IncrementalSolver
 from constraints import GeneralizedArcLength
 from controllers import Adaptive
+from core import IterativeSolver, IncrementalSolver
 from criteria import EigenvalueChangeTermination, termination_default
-
+from structure_from_springable import StructureFromCurve
+from utils import Problem, Plotter
 
 nlf = StructureFromCurve("csv_files/jumper.csv")
 problem = Problem(nlf, ixp=[0], ixf=[1], ff=np.array([0]), qp=np.array([3]))

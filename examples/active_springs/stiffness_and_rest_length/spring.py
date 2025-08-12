@@ -3,6 +3,7 @@ import numpy as np
 
 class SpringL0K:
     """"Spring where both initial length L0 and stiffness k are DOFs"""
+
     def force(self, q: np.ndarray) -> np.ndarray:
         """
         :param q: array containing the 6 coordinates describing the 6 degrees of freedom of the spring:

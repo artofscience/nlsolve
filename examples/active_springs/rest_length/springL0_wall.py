@@ -1,11 +1,10 @@
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
+
 from core import IncrementalSolver, IterativeSolver
-from utils import Problem, Point
 from criteria import residual_norm
-
 from spring import SpringL0
-
+from utils import Problem, Point
 
 fig, ax1 = plt.subplots()
 
@@ -39,7 +38,6 @@ for j in [-1e-6, 0, 1e-6]:
     for a in tries:
         ax1.plot([i.q[4] for i in a], [i.q[3] for i in a], 'ro--', alpha=0.1)
         ax2.plot([i.q[4] for i in a], [i.f[-1] for i in a], 'bo--', alpha=0.1)
-
 
 # CHECK REACTION FORCE VALUE
 plt.show()
