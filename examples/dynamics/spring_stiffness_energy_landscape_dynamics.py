@@ -7,7 +7,7 @@ from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
-from examples.active_springs.stiffness.spring import SpringK
+from examples.active_springs.spring import SpringK
 from utils import Problem, Point
 
 
@@ -61,13 +61,13 @@ dynsolver = DynamicsSolver(spring)  # setup dynamics solver
 
 out_dyn = dynsolver(pc, m=1.0, v0=-1.0)
 
-out_GAL3 = stepper(out_dyn[-1], terminated=termination_default(0.4))
+out_GAL3 = stepper(out_dyn.solutions[-1], terminated=termination_default(0.4))
 
 # postproccessing
 plt.plot([i.q[-1] for i in out_NR.solutions], [i.q[3] for i in out_NR.solutions], 'ro-')
 plt.plot([i.q[-1] for i in out_GAL.solutions], [i.q[3] for i in out_GAL.solutions], 'ko-')
 plt.plot([i.q[-1] for i in out_GAL2.solutions], [i.q[3] for i in out_GAL2.solutions], 'co-')
-plt.plot([i.q[-1] for i in out_dyn], [i.q[3] for i in out_dyn], 'mo-')
+plt.plot([i.q[-1] for i in out_dyn.solutions], [i.q[3] for i in out_dyn.solutions], 'mo-')
 plt.plot([i.q[-1] for i in out_GAL3.solutions], [i.q[3] for i in out_GAL3.solutions], 'yo-')
 
 plt.xlim([0, 3.5])

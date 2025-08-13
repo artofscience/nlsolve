@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 from constraints import NewtonRaphson, GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
-from examples.active_springs.rest_length.spring import SpringL0
+from examples.active_springs.spring import SpringL0
 from utils import Problem, Point
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
@@ -34,17 +34,21 @@ dynsolver = DynamicsSolver(spring)  # setup dynamics solver
 
 # dynamics using velocity
 dynsolver(pc, c=0.1, m=1.0, v0=1, tol=1e-6)
-plt.plot([i.q[4] for i in dynsolver.history[0]], [i.q[3] for i in dynsolver.history[0]], 'ko-')
+sol = dynsolver.history[0].solutions
+
+plt.plot([i.q[4] for i in sol], [i.q[3] for i in sol], 'ko-')
 
 stepper2 = IncrementalSolver(solver)
-stepper2(dynsolver.history[0][-1], y=stepper.history[0].time[-1])
+stepper2(dynsolver.history[0].solutions[-1], y=stepper.history[0].time[-1])
 plt.plot([i.q[4] for i in stepper2.out.solutions], [i.q[3] for i in stepper2.out.solutions], 'mo-')
 
 dynsolver(pc, c=0.1, m=1.0, v0=-1, tol=1e-6)
-plt.plot([i.q[4] for i in dynsolver.history[1]], [i.q[3] for i in dynsolver.history[1]], 'ko-')
+sol = dynsolver.history[1].solutions
+
+plt.plot([i.q[4] for i in sol], [i.q[3] for i in sol], 'ko-')
 
 stepper3 = IncrementalSolver(solver)
-stepper3(dynsolver.history[1][-1], y=stepper.history[0].time[-1])
+stepper3(dynsolver.history[1].solutions[-1], y=stepper.history[0].time[-1])
 plt.plot([i.q[4] for i in stepper3.out.solutions], [i.q[3] for i in stepper3.out.solutions], 'bo-')
 
 
