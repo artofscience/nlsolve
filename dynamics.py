@@ -2,6 +2,7 @@ import numpy as np
 from scipy.integrate import RK45
 
 from utils import Problem, Point
+from core import Out
 
 
 class DynamicsSolver:
@@ -19,10 +20,11 @@ class DynamicsSolver:
         args = (self.problem, p0, c, m)
         t, y = self.solver(x0, [t_start, t_end], args, tol)
 
-        out = self.get_out(y, p0, m)
-        self.history.append(out)
-
-        return out
+        self.out = Out()
+        self.out.solutions =  self.get_out(y, p0, m)
+        self.out.time = t
+        self.history.append(self.out)
+        return self.out
 
     def solver(self, x0, time, args, tol: float = 1e-6):
         t = []

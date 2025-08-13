@@ -12,7 +12,7 @@ from examples.inclined_truss_snapback import InclinedTrussSnapback
 from utils import Problem, Plotter
 
 problem = Problem(InclinedTrussSnapback(theta0=pi / 3), ixf=[0, 1], ff=np.array([0, 0.5]))
-controller = Adaptive(0.05, incr=1.3, decr=0.1, min=0.00001)
+controller = Adaptive(0.1, incr=1.3, decr=0.1, min=0.00001, max=0.3)
 constraint = GeneralizedArcLength()
 
 solver = IterativeSolver(problem, constraint)
@@ -21,21 +21,22 @@ stepper = IncrementalSolver(solver, controller, reset=False)
 
 solution0 = stepper(terminated=EigenvalueChangeTermination())
 
-plotter(solution0.solutions, 1, 1, 'ko--')
-plotter(solution0.solutions, 0, 1, 'bo--')
+plotter = Plotter()
+plotter(solution0.solutions, 1, 1)
+plotter(solution0.solutions, 0, 1)
 
 pswitch = deepcopy(solution0.solutions[-1])
 
 solution1 = stepper(pswitch, terminated=EigenvalueChangeTermination())
 
-plotter(solution1.solutions, 1, 1, 'yo--')
-plotter(solution1.solutions, 0, 1, 'go--')
+plotter(solution1.solutions, 1, 1)
+plotter(solution1.solutions, 0, 1)
 
 pswitch = deepcopy(solution1.solutions[-1])
 
 solution2 = stepper(pswitch, terminated=LoadTermination())
 
-plotter(solution2.solutions, 1, 1, 'ro--')
-plotter(solution2.solutions, 0, 1, 'co--')
+plotter(solution2.solutions, 1, 1)
+plotter(solution2.solutions, 0, 1)
 
 plt.show()

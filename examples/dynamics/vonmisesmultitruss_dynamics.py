@@ -48,8 +48,8 @@ def main(a: int = 1, max_load: float = 1.0, v0: float = 1.0):
         plotter(out.solutions, 2, 4)
 
     for out in dynsolver.history:
-        plotter(out, 4, 4)
-        plotter(out, 2, 4)
+        plotter(out.solutions, 4, 4)
+        plotter(out.solutions, 2, 4)
 
 
 if __name__ == '__main__':

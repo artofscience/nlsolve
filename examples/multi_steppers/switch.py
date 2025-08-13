@@ -30,17 +30,17 @@ out2 = stepper(terminated=EigenvalueTermination(lt, -0.4, 0.01))
 out3 = stepper(out2.solutions[-1], constraint=NewtonRaphson(), terminated=LoadTermination(gt, 2.0, 0.1))
 
 ### PLOTTING
-plotter(out0.solutions, 0, 1, 'ko--')
-plotter(out0.solutions, 1, 1, 'ko--')
+plotter = Plotter()
+plotter(out0.solutions, 0, 1)
+plotter(out0.solutions, 1, 1)
+plotter(out1.solutions, 0, 1)
+plotter(out1.solutions, 1, 1)
 
-plotter(out1.solutions, 0, 1, 'ko-')
-plotter(out1.solutions, 1, 1, 'ko-')
+plotter(out2.solutions, 0, 1)
+plotter(out2.solutions, 1, 1)
 
-plotter(out2.solutions, 0, 1, 'ro-')
-plotter(out2.solutions, 1, 1, 'go-')
-
-plotter(out3.solutions, 0, 1, 'co--')
-plotter(out3.solutions, 1, 1, 'yo--')
+plotter(out3.solutions, 0, 1)
+plotter(out3.solutions, 1, 1)
 
 ### END POTTING
 
