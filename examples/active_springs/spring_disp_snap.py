@@ -54,7 +54,7 @@ ax2.set_ylabel('Load', color='blue')
 ax2.tick_params(axis='y', labelcolor='blue')
 
 # plot
-ax1.plot([i.q[2] for i in out.solutions], [i.q[2] for i in out.solutions], 'ro-')
-ax2.plot([i.q[2] for i in out.solutions], [i.f[2] for i in out.solutions], 'bo--')
+ax1.plot([i for i in out.time], [i.q[2] for i in out.solutions], 'ro-')
+ax2.plot([i for i in out.time], [i.f[2] for i in out.solutions], 'bo--')
 
 plt.show()

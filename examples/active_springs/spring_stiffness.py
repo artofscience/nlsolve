@@ -41,7 +41,8 @@ solver = IterativeSolver(spring, GeneralizedArcLength(alpha=0.00001, beta=10), c
 
 stepper = IncrementalSolver(solver, maximum_increments=50)
 
-solution, tries = stepper(p0, controller)
+stepper(p0, controller)
+solution = stepper.out.solutions
 
 plt.plot([i.q[3] for i in solution], [i.f[-1] for i in solution], 'ro-')
 plt.plot([i.q[-1] for i in solution], [i.f[-1] for i in solution], 'bo-')

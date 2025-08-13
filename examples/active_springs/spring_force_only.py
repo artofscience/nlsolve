@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+from constraints import NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
 from spring import Spring
 from utils import Problem, Point
@@ -38,7 +39,7 @@ ff = np.ones(1)
 spring = Problem(SpringReduced(Spring(k, l0)), ixf=ixf, ff=ff)
 
 # setup solver
-solver = IterativeSolver(spring)
+solver = IterativeSolver(spring, NewtonRaphson())
 
 # initial point
 p0 = Point(q=np.array([2, 0, 0, 0]))
@@ -52,7 +53,8 @@ print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".fo
 steppah = IncrementalSolver(solver)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0)[0]
+out = steppah(p0 + dp0)
+solution = out.solutions
 
 fig, ax1 = plt.subplots()
 

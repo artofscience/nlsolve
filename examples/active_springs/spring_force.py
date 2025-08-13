@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from core import IncrementalSolver, IterativeSolver
 from spring import Spring
 from utils import Problem, Point
+from constraints import NewtonRaphson, GeneralizedArcLength
 
 """"
 Analysis of a simple spring with fixed stiffness k and rest length l0.
@@ -32,7 +33,7 @@ qp, ff = np.zeros(3), np.ones(1)
 spring = Problem(Spring(k, l0), ixf, ixp, ff, qp)
 
 # setup solver
-solver = IterativeSolver(spring)
+solver = IterativeSolver(spring, NewtonRaphson())
 
 # initial point
 p0 = Point(q=np.array([0, 0, 1.0, 0.9]))
@@ -55,7 +56,9 @@ steppah = IncrementalSolver(
     maximum_increments=15)
 
 # solve problem from equilibrium point
-solution, tries = steppah(p0eq)
+steppah(p0eq)
+
+solution = steppah.out.solutions
 
 fig, ax1 = plt.subplots()
 

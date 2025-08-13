@@ -52,7 +52,8 @@ controller = Adaptive(value=0.01, min=0.0001, max=0.01, decr=0.1, incr=1.1)
 # controller = Controller(0.001)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0, controller)[0]
+steppah(p0 + dp0, controller)
+solution = steppah.out.solutions
 
 fig, ax1 = plt.subplots(2, 1)
 
