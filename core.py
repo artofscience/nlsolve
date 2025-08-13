@@ -154,7 +154,8 @@ class IncrementalSolver:
     def __init__(self, solution_method: IterativeSolver,
                  controller: Controller = None,
                  p: Point = None,
-                 name: str = "MyIncrementalSolver", logging_level: int = logging.DEBUG,
+                 name: str = None,
+                 logging_level: int = logging.DEBUG,
                  maximum_increments: int = 1000,
                  terminated=termination_default(),
                  reset: bool = True) -> None:
@@ -184,9 +185,9 @@ class IncrementalSolver:
         self.terminated = terminated
 
         # logging
-        self.__name__ = name
+        self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
-        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + name)
+        self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
         self.y = 0.0
 
