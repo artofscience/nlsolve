@@ -70,6 +70,9 @@ class Constraint(ABC):
 
 
 class NewtonRaphson(Constraint):
+    def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, default_positive_direction: bool = True) -> None:
+        super().__init__(dl, name, logging_level)
+        self.default_positive_direction = default_positive_direction
 
     def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
         return 0.0
@@ -79,15 +82,17 @@ class NewtonRaphson(Constraint):
         load += nlf.qp2 if nlf.np else 0.0
         load += nlf.ff2 if nlf.nf else 0.0
 
-        return self.dl / np.sqrt(load)
+        value = self.dl / np.sqrt(load)
+
+        return value if self.default_positive_direction else -value
 
 
 class ArcLength(Constraint):
     def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, beta: float = 1.0,
-                 direction: bool = True) -> None:
+                 default_positive_direction: bool = True) -> None:
         super().__init__(dl, name, logging_level)
         self.beta = beta
-        self.direction = direction
+        self.default_positive_direction = default_positive_direction
 
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
         y = self.get_roots_predictor(nlf, p, ddx, self.dl)
@@ -162,11 +167,7 @@ class ArcLength(Constraint):
 
     def select_root_predictor(self, nlf: Problem, p: Point, sol: List[Point], cps: List[Point], y) -> float:
         if len(sol) < 2:
-            if self.direction:
-                return y[0] if y[0] > y[1] else y[1]
-            else:
-                return y[1] if y[0] > y[1] else y[0]
-
+            return max(y) if self.default_positive_direction else min(y)
 
         else:
             if nlf.nf:
@@ -228,8 +229,8 @@ class NewtonRaphsonByArcLength(ArcLength):
 
 class GeneralizedArcLength(ArcLength):
     def __init__(self, dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, alpha: float = 1.0,
-                 beta: float = 1.0) -> None:
-        super().__init__(dl, name, logging_level, beta)
+                 beta: float = 1.0, default_positive_direction: bool = True) -> None:
+        super().__init__(dl, name, logging_level, beta, default_positive_direction)
         self.alpha = alpha
 
     def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
