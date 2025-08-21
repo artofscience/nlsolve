@@ -6,19 +6,20 @@ from core import Out
 
 
 class DynamicsSolver:
-    def __init__(self, problem: Problem):
+    def __init__(self, problem: Problem, tol: float = 1e-3):
         self.problem = problem
         self.history = []
+        self.tol = tol
 
     def __call__(self, p0: Point, c: float = 1.0, m=None,
-                 t_start: float = 0.0, t_end: float = 1e3,
-                 v0: float = 0.0, tol: float = 1e-3):
+                 t_start: float = 0.0, t_end: float = 1e6,
+                 v0: float = 0.0, tol = None):
 
         tmp = p0.q[self.problem.ixf]
         x0 = np.hstack((tmp, v0 * np.ones_like(tmp))) if m else tmp
 
         args = (self.problem, p0, c, m)
-        t, y = self.solver(x0, [t_start, t_end], args, tol)
+        t, y = self.solver(x0, [t_start, t_end], args, self.tol if tol is None else tol)
 
         self.out = Out()
         self.out.solutions =  self.get_out(y, p0, m)
@@ -49,9 +50,9 @@ class DynamicsSolver:
 
     def load_based_offset(self, p0: Point, alpha: float = 1.0):
         point = 1.0 * p0
-        if self.problem.ixf:
+        if self.problem.nf:
             point.f[self.problem.ixf] += alpha / 100 * self.problem.ffc
-        if self.problem.ixp:
+        if self.problem.np:
             point.q[self.problem.ixp] += alpha / 100 * self.problem.qpc
         return point
 
