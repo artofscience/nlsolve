@@ -99,8 +99,11 @@ class IterativeSolver:
         # make corrections until termination criteria are met
         while True:
             if counter:
-                raise CounterError("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold),
+                self.logger.error("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold),
                                    counter.count)
+                # raise CounterError("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold),
+                #                    counter.count)
+                break
 
             if self.converged(self.nlf, p + dp, ddy):
                 # terminate the loop if converged

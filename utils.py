@@ -179,6 +179,17 @@ class Point:
         out.f *= other
         return out
 
+    def is_zero(self, tol) -> bool:
+        norm_f = np.linalg.norm(self.f)
+        norm_u = np.linalg.norm(self.q)
+        return norm_f < tol and norm_u < tol
+
+    def norm(self):
+        norm_f = np.linalg.norm(self.f)
+        norm_u = np.linalg.norm(self.q)
+        return np.linalg.norm(np.array([norm_f, norm_u]))
+
+
     @staticmethod
     def make_float(x):
         return x.astype(float) if type(x) is np.ndarray else x

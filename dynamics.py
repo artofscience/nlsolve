@@ -12,7 +12,7 @@ class DynamicsSolver:
         self.tol = tol
 
     def __call__(self, p0: Point, c: float = 1.0, m=None,
-                 t_start: float = 0.0, t_end: float = 1e6,
+                 t_start: float = 0.0, t_end: float = 1e3,
                  v0: float = 0.0, tol = None):
 
         tmp = p0.q[self.problem.ixf]
