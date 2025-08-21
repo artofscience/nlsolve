@@ -13,10 +13,14 @@ from itertools import cycle
 class Plotter:
     colours = cycle(['black', 'red', 'green', 'blue'])
 
+    def __init__(self, linestyle='-', marker='o'):
+        self.linestyle = linestyle
+        self.marker = marker
+
     def __call__(self, solution, idq, idf):
         plt.plot([i.q[idq] for i in solution], [i.f[idf] for i in solution],
-                 marker='o',
-                 linestyle='dashed',
+                 marker=self.marker,
+                 linestyle=self.linestyle,
                  color=next(self.colours))
 
 
