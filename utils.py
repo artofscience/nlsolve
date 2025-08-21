@@ -59,11 +59,11 @@ class Problem(ABC):
     def __init__(self, nlf, ixf=None, ixp=None, ff=None, qp=None):
         self.nlf = nlf
 
-        self.ixf = ixf
-        self.ixp = ixp
+        self.ixf = ixf if ixf is not None else []
+        self.ixp = ixp if ixp is not None else []
 
-        self.nf = len(self.ixf) if ixf is not None else 0
-        self.np = len(self.ixp) if ixp is not None else 0
+        self.nf = len(self.ixf)
+        self.np = len(self.ixp)
         self.n = self.nf + self.np
 
         self.ffc = ff.astype(float) if ff is not None else np.zeros(self.nf)
