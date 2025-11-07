@@ -171,7 +171,7 @@ class NonlinearPolySpringT:
                                                                   [0, 1, 0, -1],
                                                                   [-1, 0, 1, 0],
                                                                   [0, -1, 0, 1]])
-                                                -1/l**3 * np.outer(dldq, dldq)[:4, :4])
+                                                -1 / l * np.outer(dldq, dldq)[:4, :4])
         
         k_matrix[:, -1] +=  (self._d2vdldp(l, t) @ self._dpdt(t)) * dldq
         k_matrix[-1, :] +=  (self._d2vdldp(l, t) @ self._dpdt(t)) * dldq
