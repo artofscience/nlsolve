@@ -1,5 +1,6 @@
 import numpy as np
 from collections.abc import Callable
+from sympy import diff, lambdify
 
 class Spring:
     """Inactive spring"""
@@ -203,18 +204,14 @@ class SpringT:
     """Spring where temperature T is a DOF.
     Initial length L0(T) and k(T)"""
 
-    def __init__(self, l0: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                 k: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                 dl0dt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                 dkdt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                 d2l0dt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
-                 d2kdt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray]):
-        self.k = k
-        self.l0 = l0
-        self.dl0dt = dl0dt
-        self.dkdt = dkdt
-        self.d2l0dt2 = d2l0dt2
-        self.d2kdt2 = d2kdt2
+    def __init__(self, l0, k):
+        x = "T"
+        self.k = lambdify(x, k, modules='numpy')
+        self.l0 = lambdify(x, l0, modules='numpy')
+        self.dl0dt = lambdify("T", diff(l0, x), modules='numpy')
+        self.dkdt = lambdify("T", diff(k, x), modules='numpy')
+        self.d2l0dt2 = lambdify("T", diff(l0, x, 2), modules='numpy')
+        self.d2kdt2 = lambdify("T", diff(k, x, 2), modules='numpy')
 
     def force(self, q: np.ndarray) -> np.ndarray:
         """

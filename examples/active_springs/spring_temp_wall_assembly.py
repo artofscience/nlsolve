@@ -8,16 +8,14 @@ from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from spring import SpringT
 from utils import Problem, Point
-
+from sympy import Symbol
 
 class SpringAssembly:
     def __init__(self):
-        self.spring1 = SpringT(k=lambda T: 1, l0=lambda T: sqrt(2),
-                               dkdt=lambda T: 1, dl0dt=lambda T: 0,
-                               d2kdt2=lambda T: 1, d2l0dt2=lambda T: 0)
-        self.spring2 = SpringT(k=lambda T: 0.1, l0=lambda T: 3 - 3 * T,
-                               dkdt=lambda T: 0, dl0dt=lambda T: -3,
-                               d2kdt2=lambda T: 0, d2l0dt2=lambda T: 0)
+        T = Symbol("T")
+
+        self.spring1 = SpringT(k=1, l0=sqrt(2))
+        self.spring2 = SpringT(k=0.1, l0=3 - 3 * T)
         self.ix1 = [0, 1, 2, 3, 6]
         self.ix2 = [2, 3, 4, 5, 6]
 

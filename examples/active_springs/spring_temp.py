@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 from core import IncrementalSolver, IterativeSolver
 from spring import SpringT
 from utils import Problem, Point
+from sympy import Symbol
+
 
 # dofs = [x0, y0, x1, y1, T]
 ixp = [0, 1, 2, 3, 4]
@@ -16,9 +18,8 @@ qp[4] = 1.0
 """Assume here both k and l0 are linearly increasing with T
 k = 1 + lambda * T
 l0 = 1 + lambda * T"""
-spring = SpringT(k=lambda T: 2 - 1.99 * T, l0=lambda T: 1 + T,
-                 dkdt=lambda T: -1.99, dl0dt=lambda T: 1,
-                 d2kdt2=lambda T: 0, d2l0dt2=lambda T: 0)
+T = Symbol("T")
+spring = SpringT(l0 = 1 + T, k = 2 - 1.99*T)
 
 # setup problem
 structure = Problem(spring, ixp=ixp, qp=qp)

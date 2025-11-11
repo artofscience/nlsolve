@@ -8,6 +8,8 @@ from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from spring import SpringT
 from utils import Problem, Point
+from sympy import Symbol
+
 
 # dofs = [x0, y0, x1, y1, T]
 ixf = [3]
@@ -25,9 +27,10 @@ lambda = [0 ... 1]
 T = lambda
 k = 1 - 2 * T^2
 l0 = sqrt(2) - T"""
-spring = SpringT(k=lambda T: 1 - 2 * T ** 2, l0=lambda T: sqrt(2) - T,
-                 dkdt=lambda T: -4 * T, dl0dt=lambda T: -1,
-                 d2kdt2=lambda T: 0, d2l0dt2=lambda T: 0)
+T = Symbol("T")
+l0 = sqrt(2) - T
+k = 1 - 2*T**2
+spring = SpringT(l0, k)
 
 # setup problem
 structure = Problem(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
