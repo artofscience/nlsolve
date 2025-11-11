@@ -281,3 +281,29 @@ class SpringT:
         k_matrix[-1, -1] += (0.5 * (l - l0) ** 2 * self.d2kdt2(t) + -k * (l - l0) * self.d2l0dt2(t))
         k_matrix[-1, -1] += (0 * dkdt ** 2 + 2 * -(l - l0) * dkdt * dl0dt + k * dl0dt ** 2)
         return k_matrix
+
+
+class SpringTCallable:
+    """Spring where temperature T is a DOF.
+    Initial length L0(T) and k(T)"""
+
+    def __init__(self, l0: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 k: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 dl0dt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 dkdt: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 d2l0dt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray],
+                 d2kdt2: Callable[[float], float] | Callable[[np.ndarray], np.ndarray]):
+        self.myspring = SpringT(0,0)
+
+        self.myspring.k = k
+        self.myspring.l0 = l0
+        self.myspring.dl0dt = dl0dt
+        self.myspring.dkdt = dkdt
+        self.myspring.d2l0dt2 = d2l0dt2
+        self.myspring.d2kdt2 = d2kdt2
+
+    def force(self, q: np.ndarray) -> np.ndarray:
+        return self.myspring.force(q)
+
+    def jacobian(self, q: np.ndarray) -> np.ndarray:
+        return self.myspring.jacobian(q)
