@@ -4,17 +4,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from constraints import GeneralizedArcLength
-from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
 from controllers import Adaptive
-from criteria import residual_norm
+from core import IncrementalSolver, IterativeSolver
+from utils import Problem
 
 """
 Analysis of two-DOF inclined truss with severe snapback behaviour.
 """
 
+
 class InclinedTrussSnapback:
-    def __init__(self, w: float = 0.1, theta0: float = pi/2.5):
+    def __init__(self, w: float = 0.1, theta0: float = pi / 2.5):
         self.w = w
         self.theta0 = theta0
 
@@ -35,22 +35,21 @@ class InclinedTrussSnapback:
 if __name__ == "__main__":
     truss = InclinedTrussSnapback()
 
-    problem = Structure(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
+    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
 
-    solver = IterativeSolver(problem, GeneralizedArcLength(), residual_norm(1e-6))
-
-    stepper = IncrementalSolver(solver)
-
-    p0 = Point(qf=np.array([0, 0]), ff=np.array([0, 0]))
+    solver = IterativeSolver(problem, GeneralizedArcLength())
 
     controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
 
-    solution = stepper(p0, controller)[0]
+    stepper = IncrementalSolver(solver, controller)
+
+    out = stepper()
 
     # PLOTTING
 
     # plot both DOF 0 and 1 wrt the loading magnitude at DOF 1
-    plt.plot([i.qf[0] for i in solution], [i.ff[1] for i in solution], 'ko-')
-    plt.plot([i.qf[1] for i in solution], [i.ff[1] for i in solution], 'bo-')
+
+    plt.plot([i.q[0] for i in out.solutions], [i for i in out.time], 'ko-')
+    plt.plot([i.q[1] for i in out.solutions], [i for i in out.time], 'bo-')
 
     plt.show()

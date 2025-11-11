@@ -1,17 +1,21 @@
 """Abstract implementation for convergence criteria."""
-from abc import ABC, abstractmethod
-from utils import Point, Structure
 import logging
 import operator
-from operator import lt
-
-from logger import CustomFormatter, create_logger
+from abc import ABC, abstractmethod
+from operator import lt, gt
 from typing import Callable
+from typing import List
 
 import numpy as np
+from numpy.linalg import eigvals
+
+from logger import CustomFormatter, create_logger
+from utils import Point, Problem
+
 
 class CounterError(Exception):
     pass
+
 
 class Counter:
     """Enforces a maximum number of iterations.
@@ -43,6 +47,7 @@ class CriterionBase(ABC):
     Abstract class to setup a termination criterium (convergence, divergence).
     This class is dedicated to the use in IncrementalSolver or IterativeSolver class.
     """
+
     def __init__(self, name: str = None, logging_level: int = logging.INFO) -> None:
         """
         Initializes the criterion, sets up the logger.
@@ -53,17 +58,6 @@ class CriterionBase(ABC):
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self))[-3:])
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
-
-    @abstractmethod
-    def __call__(self, problem: Structure, p: Point, ddy: float) -> bool:
-        """
-
-        :param problem: the (non)linear function to be solved
-        :param p: the state (Point)
-        :param ddy: the change in load by predictor or corrector
-        :return: bool
-        """
-        pass
 
     def __and__(self, other):
         """Return a combined ``Criteria`` from the ``and (&)`` operation."""
@@ -82,7 +76,6 @@ class CriterionBase(ABC):
         """
         return Criteria(self, lambda: True, operator.__ne__)
 
-    @abstractmethod
     def reset(self):
         """
         Function that resets some class attributes, such that instance can be reused.
@@ -90,7 +83,24 @@ class CriterionBase(ABC):
         """
         pass
 
-class Criteria(CriterionBase):
+
+class TerminationCriterion(CriterionBase, ABC):
+
+    @abstractmethod
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        pass
+
+    def __and__(self, other):
+        return TerminationCriteria(self, other, operator.__and__)
+
+    def __or__(self, other):
+        return TerminationCriteria(self, other, operator.__or__)
+
+    def __invert__(self):
+        return TerminationCriteria(self, lambda: False, operator.__ne__)
+
+
+class Criteria(CriterionBase, ABC):
     """A boolean combination of two ``Criterion`` instances.
 
     This class keeps track of two criteria, e.g. "left" and "right". These are
@@ -105,7 +115,7 @@ class Criteria(CriterionBase):
         self.left, self.right = left, right
         self.operator = op
 
-    def __call__(self, problem: Structure, p: Point, ddy: float) -> bool:
+    def __call__(self, problem: Problem, p: Point, ddy: float) -> bool:
         """Ensure both criteria are called when called."""
         done = self.operator(bool(self.left(problem, p, ddy)), bool(self.right(problem, p, ddy)))
         if done:
@@ -116,6 +126,83 @@ class Criteria(CriterionBase):
         """Ensure both criteria are reset."""
         self.left.reset()
         self.right.reset()
+
+
+class ExceedThresholdTermination(TerminationCriterion, ABC):
+    def __init__(self, operator: Callable = gt, threshold: float = 1.0, margin: float = 1.0):
+        super().__init__()
+        self.operator = operator
+        self.threshold = threshold
+        self.margin = margin
+        self.exceed = False
+        self.accept = False
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        value = self.value(problem, p, dp, y, dy)
+        self.exceed = self.operator(value, self.threshold)
+        self.accept = self.exceed and (abs(value - self.threshold) < self.margin)
+
+    @abstractmethod
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        pass
+
+
+class LoadTermination(ExceedThresholdTermination):
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        return y
+
+
+class EigenvalueTermination(ExceedThresholdTermination):
+    def value(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        return min(eigvals(problem.kff(p[-1] + dp)))
+
+
+class EigenvalueChangeTermination(TerminationCriterion):
+    def __init__(self, margin: float = 0.01):
+        super().__init__()
+        self.margin = margin
+        self.change = False
+        self.exceed = False
+        self.accept = False
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        point = p[-1] + dp
+
+        mu0 = sum(eigvals(problem.kff(p[-1])) < 0)
+
+        eigs = eigvals(problem.kff(point))
+        mu1 = sum(eigs < 0)
+
+        value = min(abs(eigs))
+
+        self.change = (mu0 != mu1)
+        self.exceed = self.change and value > self.margin
+        self.accept = self.change and value < self.margin
+
+
+class TerminationCriteria(TerminationCriterion, ABC):
+    def __init__(self, left, right, op,
+                 name: str = None, logging_level: int = logging.INFO):
+        super().__init__(name, logging_level)
+        self.left, self.right = left, right
+        self.operator = op
+        self.exceed = False
+        self.accept = False
+
+    def __call__(self, problem: Problem, p: List[Point], dp: Point, y: float, dy: float):
+        """Ensure both criteria are called when called."""
+        self.left(problem, p, dp, y, dy)
+        self.right(problem, p, dp, y, dy)
+        self.exceed = self.operator(self.left.exceed, self.right.exceed)
+        self.accept = self.operator(self.left.accept, self.right.accept)
+        if self.exceed and self.accept:
+            self.logger.info("Combined termination criteria satisfied")
+
+    def reset(self):
+        """Ensure both criteria are reset."""
+        self.left.reset()
+        self.right.reset()
+
 
 class CriterionP(CriterionBase):
     """
@@ -134,6 +221,7 @@ class CriterionP(CriterionBase):
     Next one can use the criterion via
     >>> while ~my_criterion(nlf, p, ddy):
     """
+
     def __init__(self, fnc: Callable = lambda p: p.y,
                  is_x_then: Callable = lt,
                  threshold: float = 1.0,
@@ -141,25 +229,26 @@ class CriterionP(CriterionBase):
                  ) -> None:
         super().__init__(name, logging_level)
         self.fnc = fnc
-        self.ref = None # define a reference value for logging purposes
+        self.ref = None  # define a reference value for logging purposes
         self.threshold = threshold
         self.operator = is_x_then
 
-    def __call__(self, nlf: Structure, p: Point, ddy: float) -> bool:
-        value = self.call_to_fnc(nlf, p, ddy) # the value to work with it the output of the provided function
-        self.ref = 1.0 * value if self.ref is None else self.ref # set reference if not done yet
-        done = self.operator(value, self.threshold) # compare value to given threshold
-        if done: # print to console that criterion is satisfied and provide info on values (reference, threshold and value)
+    def __call__(self, nlf: Problem, p: Point, ddy: float) -> bool:
+        value = self.call_to_fnc(nlf, p, ddy)  # the value to work with it the output of the provided function
+        self.ref = 1.0 * value if self.ref is None else self.ref  # set reference if not done yet
+        done = self.operator(value, self.threshold)  # compare value to given threshold
+        if done:  # print to console that criterion is satisfied and provide info on values (reference, threshold and value)
             self.logger.info(
                 "Criterion satisfied, value changed from %.2e exceeding threshold %.2e to %.2e" % (
                     self.ref, self.threshold, value))
         return done
 
     def reset(self):
-        self.ref = None # reset reference value
+        self.ref = None  # reset reference value
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
-        return self.fnc(p) # only takes the Point
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+        return self.fnc(p)  # only takes the Point
+
 
 class CriterionX(CriterionP):
     """
@@ -167,7 +256,7 @@ class CriterionX(CriterionP):
 
     One can define a function, e.g. the norm of the residual vector,
     and compare to some float via an operator
-    >>> def my_function(nlf: Structure, p: Point) -> float: return np.linalg.norm(nlf.r(p))
+    >>> def my_function(nlf: Problem, p: Point) -> float: return np.linalg.norm(nlf.r(p))
 
     Alternativley one can use a lambda function.
     Example use to check whether the maximum absolute value of the internal load of free dofs is lower than some value:
@@ -175,6 +264,7 @@ class CriterionX(CriterionP):
 
     Next one can use the criterion similar to CriterionP.
     """
+
     def __init__(self, fnc: Callable = lambda nlf, p: np.linalg.norm(nlf.r(p)),
                  is_x_then: Callable = lt,
                  threshold: float = 1.0e-9,
@@ -182,8 +272,9 @@ class CriterionX(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
-        return self.fnc(nlf, p) # note: takes the nonlinear function and the state (point)
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+        return self.fnc(nlf, p)  # note: takes the nonlinear function and the state (point)
+
 
 class CriterionXH(CriterionX):
     """
@@ -192,7 +283,7 @@ class CriterionXH(CriterionX):
 
     One can define a function, e.g. the norm of the difference of residual vectors of two iterates,
     and compare to some float via an operator
-    >>> def my_function(nlf: Structure, p: Point, p_old: Point) -> float:
+    >>> def my_function(nlf: Problem, p: Point, p_old: Point) -> float:
     >>>     return np.linalg.norm(nlf.r(p) - nlf.r(p_old))
 
     Alternativley one can use a lambda function.
@@ -201,23 +292,25 @@ class CriterionXH(CriterionX):
 
     Next one can use the criterion similar to CriterionP.
     """
+
     def __init__(self, fnc: Callable = lambda x, y, z: np.linalg.norm(x.r(y) - x.r(z)),
                  is_x_then: Callable = lt,
                  threshold: float = 1.0,
                  name: str = None, logging_level: int = logging.INFO):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
-        self.point_old = None # initialize the old point
+        self.point_old = None  # initialize the old point
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         if self.point_old is None:
-            self.point_old = 0.0 * p # set the old point of not done yet, here initialized to zero point
-        value = self.fnc(nlf, p, self.point_old) # note the old point is the third input
-        self.point_old = 1.0 * p # set the old point
+            self.point_old = 0.0 * p  # set the old point of not done yet, here initialized to zero point
+        value = self.fnc(nlf, p, self.point_old)  # note the old point is the third input
+        self.point_old = 1.0 * p  # set the old point
         return value
 
     def reset(self):
         super().reset()
-        self.point_old = None # reset the old point
+        self.point_old = None  # reset the old point
+
 
 class CriterionY(CriterionP):
     def __init__(self, fnc: Callable = lambda ddy: abs(ddy),
@@ -227,11 +320,12 @@ class CriterionY(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         return self.fnc(ddy)
 
     def reset(self):
         super().reset()
+
 
 class CriterionYH(CriterionY):
     def __init__(self, fnc: Callable = lambda ddy: abs(ddy),
@@ -243,7 +337,7 @@ class CriterionYH(CriterionY):
         self.old_ref = value
         self.ddy_old = value
 
-    def call_to_fnc(self, nlf: Structure, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
         value = self.fnc(ddy, self.ddy_old)
         self.ddy_old = 1.0 * ddy
         return value
@@ -251,13 +345,19 @@ class CriterionYH(CriterionY):
     def reset(self):
         self.ddy_old = 1.0 * self.old_ref
 
-def residual_norm(threshold, name: str ="Residual norm", logging_level: int = logging.INFO):
+
+def residual_norm(threshold, name: str = "Residual norm", logging_level: int = logging.INFO):
     """
     Creates instance of CriterionX that checks the 2-norm of the residual vector.
     """
-    return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold, name=name, logging_level=logging_level)
+    return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold)
+
 
 def divergence_default():
-    return CriterionYH(
-    lambda x, y: abs(y) - abs(x), lt, 0.0,
-    name="DAL", logging_level=logging.DEBUG)
+    return (CriterionYH(lambda x, y: abs(y) - abs(x), lt, 0.0, logging_level=logging.ERROR)
+            & CriterionXH(lambda nlf, p, p_old: np.linalg.norm(nlf.r(p)) - np.linalg.norm(nlf.r(p_old)), gt, 0,
+                          logging_level=logging.ERROR))
+
+
+def termination_default(threshold: float = 1.0, margin: float = 0.01):
+    return LoadTermination(gt, threshold, margin) | LoadTermination(lt, -threshold, margin)

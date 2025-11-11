@@ -1,12 +1,15 @@
-from matplotlib import pyplot as plt
-import numpy as np
 from math import sqrt
-from controllers import Controller, Adaptive
-from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
-from constraints import ArcLength, NewtonRaphson, GeneralizedArcLength
 
+import numpy as np
+from matplotlib import pyplot as plt
+
+from constraints import NewtonRaphson, GeneralizedArcLength
+from controllers import Adaptive
+from core import IncrementalSolver, IterativeSolver
 from spring import SpringT
+from utils import Problem, Point
+from sympy import Symbol
+
 
 # dofs = [x0, y0, x1, y1, T]
 ixf = [3]
@@ -24,18 +27,19 @@ lambda = [0 ... 1]
 T = lambda
 k = 1 - 2 * T^2
 l0 = sqrt(2) - T"""
-spring = SpringT(k = lambda T: 1 - 2 * T**2, l0 = lambda T: sqrt(2) - T,
-                 dkdt = lambda T: -4*T, dl0dt = lambda T: -1,
-                 d2kdt2 = lambda T: 0, d2l0dt2= lambda T: 0)
+T = Symbol("T")
+l0 = sqrt(2) - T
+k = 1 - 2*T**2
+spring = SpringT(l0, k)
 
 # setup problem
-structure = Structure(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
+structure = Problem(spring, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
 
 # setup solver
 solver = IterativeSolver(structure, NewtonRaphson())
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 0]), qf=np.array([1]), ff=np.array([-0.05]))
+p0 = Point(q=np.array([0, 0, 1, 0, 0]), f=np.array([0, 0, 0, -0.05, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
@@ -43,7 +47,7 @@ dp0 = solver([p0])[0]
 # print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 
-alpha, beta = 0,1
+alpha, beta = 0, 1
 solver_arc = IterativeSolver(structure, GeneralizedArcLength(alpha=alpha, beta=beta))
 steppah = IncrementalSolver(solver_arc, maximum_increments=100)
 
@@ -51,12 +55,13 @@ controller = Adaptive(value=0.01, min=0.0001, max=0.01, decr=0.1, incr=1.1)
 # controller = Controller(0.001)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0, controller)[0]
+steppah(p0 + dp0, controller)
+solution = steppah.out.solutions
 
 fig, ax1 = plt.subplots(2, 1)
 
-T = np.asarray([i.y for i in solution])
-k = 1 - 2 * T**2
+T = np.asarray([i.q[-1] for i in solution])
+k = 1 - 2 * T ** 2
 l0 = sqrt(2) - T
 
 ax1[0].set_xlabel('T')
@@ -82,15 +87,10 @@ ax2.set_ylabel('Load', color='blue')
 ax2.tick_params(axis='y', labelcolor='blue')
 
 # reaction force on wall
-ax2.plot(T, [i.fp[2] for i in solution], 'b.--')
+ax2.plot(T, [i.f[2] for i in solution], 'b.--')
 
 # plot displacement
-ax1[1].plot(T, [i.qf[0] for i in solution], 'r.--')
+ax1[1].plot(T, [i.q[3] for i in solution], 'r.--')
 ax1[1].set_ylim([-3, 3])
 
 plt.show()
-
-
-
-
-

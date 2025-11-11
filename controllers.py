@@ -4,8 +4,10 @@ These objects control the characteristic length of the constraint function used 
 Different controllers have different behaviour in terms of what observations are used to modify and how to modify its value.
 """
 
-from logger import CustomFormatter, create_logger
 import logging
+
+from logger import CustomFormatter, create_logger
+
 
 class Controller:
     """
@@ -15,6 +17,7 @@ class Controller:
 
     def __init__(self, value: float = 0.1, name: str = None, logging_level: int = logging.DEBUG) -> None:
         self.value = value
+        self.value0 = value
 
         self.__name__ = name if name is not None else (self.__class__.__name__ + " " + str(id(self)))
 
@@ -27,6 +30,8 @@ class Controller:
     def decrease(self) -> None:
         self.logger.warning("Controller decrease invoked, but value remains unchanged to %2.2f" % self.value)
 
+    def reset(self) -> None:
+        self.value = self.value0
 
 
 class Adaptive(Controller):
@@ -35,9 +40,9 @@ class Adaptive(Controller):
     taking into account preset minimum and maximum values.
     """
 
-    def __init__(self, value: float = 0.1, name: str = None, logging_level: int = logging.DEBUG,
-                 incr: float = 2.0, decr: float = 0.5,
-                 min: float = 0.01, max: float = 1.0) -> None:
+    def __init__(self, value: float = 0.05, name: str = None, logging_level: int = logging.DEBUG,
+                 incr: float = 1.3, decr: float = 0.3,
+                 min: float = 0.0001, max: float = 0.1) -> None:
         super().__init__(value, name, logging_level)
         self.incr = incr
         self.decr = decr

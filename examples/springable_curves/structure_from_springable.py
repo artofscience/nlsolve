@@ -3,6 +3,7 @@ import numpy as np
 from springable.behavior_creation import start_behavior_creation
 from springable.readwrite.fileio import read_behavior, read_model
 
+
 class StructureFromCurve:
     def __init__(self, filepath: str):
         self._behavior = read_behavior(filepath)
@@ -35,7 +36,7 @@ class StructureFromSpringableModelFile:
             a (np.ndarray): displacements of the coordinates
 
         Returns:
-            np.ndarray: gradient of elastic energy wrt the displacements
+            np.ndarray: gradient of elastic energy wrt the free displacements
         """
         self._asb.set_coordinates(self._q0 + a)
         return self._asb.compute_elastic_force_vector()
@@ -63,6 +64,7 @@ class StructureFromSpringableModelFile:
 
     def get_default_qp(self) -> np.ndarray:
         return np.zeros_like(self._asb.get_fixed_dof_indices())
+
 
 if __name__ == "__main__":
     start_behavior_creation()

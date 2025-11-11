@@ -1,17 +1,14 @@
-from matplotlib import pyplot as plt
 import numpy as np
-from math import sqrt
+from matplotlib import pyplot as plt
 
 from core import IncrementalSolver, IterativeSolver
-from utils import Structure, Point
-
 from spring import Spring
-
+from utils import Problem, Point
 
 """"
 Analysis of a simple spring with fixed stiffness k and rest length l0.
 
-y1 is prescribed such that it moves from 1 to -1 thereby snaping through instable region.
+x1 is prescribed such that it moves from 1 to 2
 
 """
 
@@ -19,30 +16,29 @@ y1 is prescribed such that it moves from 1 to -1 thereby snaping through instabl
 ixp = [0, 1, 2, 3]
 
 # spring parameters
-k, l0 = 1.0, sqrt(2)
+k, l0 = 1.0, 1.0
 
 # setup loading conditions
 qp = np.zeros(4)
-qp[2] = -2.0
+qp[2] = 1.0
 
 # setup problem
-spring = Structure(Spring(k, l0), ixp=ixp, qp=qp)
+spring = Problem(Spring(k, l0), ixp=ixp, qp=qp)
 
 # setup solver
 solver = IterativeSolver(spring)
 
 # initial point
-p0 = Point(qp=np.array([0, 0, 1, 1]))
+p0 = Point(q=np.array([0, 0, 1, 0]))
 
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
 
-# print("Given L0 = {}, x_1 has to change from {} by {} to {} for equilibrium.".format(spring.nlf.l0, p0.qf[0], dp0.qf[0], p0.qf[0] + dp0.qf[0]))
 # setup stepper
 steppah = IncrementalSolver(solver)
 
 # solve problem from equilibrium point
-solution = steppah(p0 + dp0)[0]
+out = steppah(p0 + dp0)
 
 fig, ax1 = plt.subplots()
 
@@ -55,13 +51,8 @@ ax2.set_ylabel('Load', color='blue')
 ax2.tick_params(axis='y', labelcolor='blue')
 
 # plot
-ax1.plot([i.y for i in solution], [i.qp[2] for i in solution], 'ro-')
-ax2.plot([i.y for i in solution], [i.fp[2] for i in solution], 'bo--')
 
+ax1.plot([i.q[2] for i in out.solutions], [i.q[2] for i in out.solutions], 'ko-')
+ax2.plot([i.q[2] for i in out.solutions], [i.f[2] for i in out.solutions], 'ro--')
 
 plt.show()
-
-
-
-
-
