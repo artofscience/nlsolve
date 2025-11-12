@@ -40,6 +40,9 @@ class SpringFromUnivariateBehavior:
         alpha = u + self._behavior.get_natural_measure()
         d2vdalpha2 = self._behavior.hessian_energy(alpha)[0]
         return d2vdalpha2
+    
+    def get_rest_length(self):
+        return self._behavior.get_natural_measure()
 
 
 class StructureFromSpringableModelFile:
