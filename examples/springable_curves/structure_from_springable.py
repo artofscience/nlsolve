@@ -2,6 +2,9 @@ import numpy as np
 
 from springable.behavior_creation import start_behavior_creation
 from springable.readwrite.fileio import read_behavior, read_model
+from springable.mechanics.element import Element
+from springable.mechanics.shape import SegmentLength, Shape
+from springable.mechanics.node import Node
 
 
 class StructureFromCurve:
@@ -43,6 +46,34 @@ class SpringFromUnivariateBehavior:
     
     def get_rest_length(self):
         return self._behavior.get_natural_measure()
+    
+class LongitudinalSpringFromUnivariateBehavior:
+    def __init__(self, filepath: str):
+        """
+
+        Args:
+            filepath (str): path to behavior csv file
+        """
+        self._behavior = read_behavior(filepath)
+
+    def force(self, x1, y1, x2, y2):
+        n1 = Node(x1, y1, False, False)
+        n2 = Node(x2, y2, False, False)
+        l, dl = SegmentLength(n1, n2).compute(mode=Shape.MEASURE_JACOBIAN)
+        dv = self._behavior.gradient_energy(l)[0]
+        return dv * dl
+    
+    def jacobian(self, x1, y1, x2, y2):
+        n1 = Node(x1, y1, False, False)
+        n2 = Node(x2, y2, False, False)
+        l, dl, d2l = SegmentLength(n1, n2).compute(mode=Shape.MEASURE_JACOBIAN_AND_HESSIAN)
+        dv = self._behavior.gradient_energy(l)[0]
+        d2v = self._behavior.hessian_energy(l)[0]
+        return d2v * np.outer(dl, dl) + dv * d2l
+
+
+
+
 
 
 class StructureFromSpringableModelFile:
