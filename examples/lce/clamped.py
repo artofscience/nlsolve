@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+from constraints import GeneralizedArcLength
 from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from examples.active_springs.spring import SpringT
@@ -16,6 +17,7 @@ spring = SpringT(l0, k)
 length = spring.l0(20) # restlength at 20 deg
 
 # initial point
+
 p0 = Point(q=np.array([0, 0, length, 0, 20]))
 
 # dofs = [x0, y0, x1, y1, T]
@@ -34,7 +36,9 @@ solver = IterativeSolver(structure)
 # solve for equilibrium given initial point
 dp0 = solver([p0])[0]
 
-controller = Adaptive(value=1, min=0.0001, max=3, decr=0.1, incr=1.1)
+solver.constraint = GeneralizedArcLength()
+
+controller = Adaptive(value=1, min=0.0001, max=5, decr=0.1, incr=1.1)
 
 # setup stepper
 steppah = IncrementalSolver(solver, controller)
