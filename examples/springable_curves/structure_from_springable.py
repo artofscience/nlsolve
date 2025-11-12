@@ -160,7 +160,8 @@ class ActiveStructureBasedOnSpringableModelFile:
         if len(connected_nodes_list) != len(connecting_active_springs_list):
             raise ValueError("There should be as many connecting active springs as tuples of connected nodes in both respective lists.")
         self._sga_assembly = read_model(springable_model_filepath).get_assembly()
-        self._nb_dofs = self._sga_assembly.get_nb_dofs()
+        self._spatial_q0 = self._sga_assembly.get_coordinates().copy()
+        self._nb_dofs = self._sga_assembly.get_nb_dofs() + 1
         self._connecting_active_springs_list = connecting_active_springs_list
         self._active_springs_dof_indices = []
 
@@ -174,6 +175,16 @@ class ActiveStructureBasedOnSpringableModelFile:
             # because each active spring depends on the last coordinate, temperature
 
             self._active_springs_dof_indices.append(indices)
+
+    def get_initial_spatial_coordinates(self):
+        """
+        returns the initial spatial coordinates (does not contain the temperature coordinate)
+        as described in the model csv file.
+        Watch out: those initial coordinates are not necessarily describing a state at equilibrium (under zero forces)
+        """
+        return self._spatial_q0
+        
+
 
     def force(self, q):
         """ q is a numpy array containing the current coordinates of each DOF.
