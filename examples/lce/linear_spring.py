@@ -1,0 +1,98 @@
+import numpy as np
+from matplotlib import pyplot as plt
+
+from constraints import NewtonRaphson, GeneralizedArcLength
+from controllers import Adaptive
+from core import IncrementalSolver, IterativeSolver
+from examples.active_springs.spring import SpringT, Spring
+from utils import Problem, Point
+from sympy import Symbol, exp
+
+class LCESpringAssembly:
+    def __init__(self, T0: float = 20, kr: float = 1.0):
+        T = Symbol('T')
+        k = 1000 * (2.3 - 2.25 / (1 + exp(-0.31 * (T - 47.06))) + 0.0005 * (T - 40) ** 2)
+        l0 = (12.08 - 5.41 / (1 + exp(-0.208 * (T - 54.5)))) / 1000
+
+        self.lce = SpringT(l0, k)
+        self.spring = Spring(k=kr*self.lce.k(T0), l0=self.lce.l0(T0))
+        self.ix_lce = [0, 1, 2, 3, 6]
+        self.ix_spring = [2, 3, 4, 5]
+
+    def force(self, q):
+        f = np.zeros(7, dtype=float)
+        f[self.ix_lce] += self.lce.force(q[self.ix_lce])
+        f[self.ix_spring] += self.spring.force(q[self.ix_spring])
+        return f
+
+    def jacobian(self, q):
+        K = np.zeros((7, 7), dtype=float)
+        K[np.ix_(self.ix_lce, self.ix_lce)] += self.lce.jacobian(q[self.ix_lce])
+        K[np.ix_(self.ix_spring, self.ix_spring)] += self.spring.jacobian(q[self.ix_spring])
+        return K
+
+fig = plt.figure()
+
+for kr in [0.01, 0.1, 1.0, 10, 100]:
+
+    # dofs = [x0, y0, x1, y1, x2, y2, T]
+    ixf = [2]
+    ixp = [0, 1, 3, 4, 5, 6]
+
+    # setup loading conditions
+    qp = np.zeros(6)
+    qp[-1] = 70.0
+
+    ff = np.zeros(1)
+
+    T0 = 20
+    nlf = LCESpringAssembly(T0, kr)
+
+    # setup problem
+    structure = Problem(nlf, ixp=ixp, qp=qp, ixf=ixf, ff=ff)
+
+    # setup solver
+    solver = IterativeSolver(structure, NewtonRaphson())
+
+    # initial point
+    dl = nlf.spring.l0
+    q0 = q=np.array([0, 0, dl, 0, 2*dl, 0, 20])
+    initial_state = Point(q0)
+
+    # solve for equilibrium given initial point
+    dp0 = solver([initial_state])[0]
+    # setup stepper
+
+    solver_arc = IterativeSolver(structure, GeneralizedArcLength())
+    steppah = IncrementalSolver(solver_arc)
+
+    controller = Adaptive(value=0.1, min=0.001, max=4, decr=0.1, incr=1.5)
+
+    # solve problem from equilibrium point
+    steppah(initial_state + dp0, controller)
+    solution = steppah.out.solutions
+
+    T = np.asarray([i.q[-1] for i in solution])
+
+    plt.subplot(2, 1, 1)
+    # plot displacement
+    plt.plot(T, [i.q[2] for i in solution], 'o--', label=f'Position internal dof, k={kr}')
+
+    plt.subplot(2,1,2)
+    plt.plot(T, [i.f[0] for i in solution], 'o--', label=f'Reaction force base k={kr}')
+
+
+plt.subplot(2, 1, 1)
+# plot displacement
+plt.xlabel('Temperature')
+plt.ylabel('Position')
+
+plt.legend(loc="lower left")
+
+
+plt.subplot(2,1,2)
+plt.xlabel('Temperature')
+plt.ylabel('Force')
+
+plt.legend(loc="lower left")
+plt.show()
