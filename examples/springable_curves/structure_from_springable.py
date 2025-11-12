@@ -19,6 +19,27 @@ class StructureFromCurve:
         alpha = u + self._behavior.get_natural_measure()
         d2vdalpha2, d2vdalphadt, d2vdt2 = self._behavior.hessian_energy(alpha, t)
         return np.array([[d2vdalpha2, d2vdalphadt], [d2vdalphadt, d2vdt2]])
+    
+class SpringFromUnivariateBehavior:
+    def __init__(self, filepath: str):
+        """
+
+        Args:
+            filepath (str): path to behavior csv file
+        """
+        self._behavior = read_behavior(filepath)
+
+    def force(self, a):
+        u = a
+        alpha = u + self._behavior.get_natural_measure()
+        dvdalpha = self._behavior.gradient_energy(alpha)[0]
+        return dvdalpha
+
+    def jacobian(self, a):
+        u = a
+        alpha = u + self._behavior.get_natural_measure()
+        d2vdalpha2 = self._behavior.hessian_energy(alpha)[0]
+        return d2vdalpha2
 
 
 class StructureFromSpringableModelFile:
@@ -65,6 +86,14 @@ class StructureFromSpringableModelFile:
     def get_default_qp(self) -> np.ndarray:
         return np.zeros_like(self._asb.get_fixed_dof_indices())
 
+
+class ActiveStructureBasedOnSptringableModelFile:
+
+    def __init__(self, springable_model_filepath: str,
+                 connecting_active_springs: list,
+                 connected_nodes: list[tuple[int]]):
+        sga_model = read_model(springable_model_filepath)
+        # WORK IN PROGRESS
 
 if __name__ == "__main__":
     start_behavior_creation()
