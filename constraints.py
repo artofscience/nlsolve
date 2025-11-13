@@ -288,3 +288,84 @@ class GeneralizedArcLength(ArcLength):
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
 
         return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
+
+
+class GeneralizedArcLengthVarCoeff(ArcLength):
+    def __init__(self, cqf, cqp, cff, cfp,
+                 dl: float = 0.1, name: str = None, logging_level: int = logging.DEBUG, default_positive_direction: bool = True) -> None:
+        super().__init__(dl, name, logging_level, 1.0, default_positive_direction)
+        self.cqf = cqf
+        self.cqp = cqp
+        self.cff = cff
+        self.cfp = cfp
+
+    def predictor(self, nlf: Problem, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+        y = self.get_roots_predictor(nlf, p, ddx, self.dl)
+        cps = [ddp(nlf, p, ddx, i) for i in y]
+        return self.select_root_predictor(nlf, p, sol, cps, y)
+
+    def corrector(self, nlf: Problem, p: Point, dp: Point, ddx: np.ndarray) -> float:
+        try:
+            y = self.get_roots_corrector(nlf, p, dp, ddx, self.dl)
+        except ValueError as error:
+            self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
+            raise ValueError("Roots of constraint equation for the corrector cannot be found!")
+
+        cps = [ddp(nlf, p + dp, ddx, i) for i in y]
+        return self.select_root_corrector(nlf, dp, cps, y)
+
+    def get_roots_predictor(self, nlf: Problem, p: Point, u: np.ndarray, dl: float) -> float:
+        a = 0.0
+        if nlf.nf:
+            tmp1 = self.cqf * u[:, 1]
+            tmp2 = self.cff * nlf.ffc
+            a += np.dot(tmp1, tmp1) + np.dot(tmp2, tmp2)
+        if nlf.np:
+            tmpa = nlf.kpp(p) @ nlf.qpc
+            if nlf.nf:
+                tmpa += nlf.kpf(p) @ u[:, 1]
+            tmp3 = self.cfp * tmpa
+            tmp4 = self.cqp * nlf.qpc
+            a += np.dot(tmp3, tmp3) + np.dot(tmp4, tmp4)
+
+        return np.array([1, -1]) * dl / np.sqrt(a)
+
+    def get_roots_corrector(self, nlf: Problem, p: Point, dp: Point, u: np.ndarray, dl: float) -> float:
+        a = np.zeros(3)
+
+        a[2] -= dl ** 2
+
+
+        if nlf.nf:
+            tmp1 = self.cqf * u[:,1]
+            tmp2 = self.cff * nlf.ffc
+            tmp5 = self.cqf * (nlf.qf(dp) + u[:, 0])
+            tmp8 = self.cff * nlf.ff(dp)
+
+            a[0] += np.dot(tmp1, tmp1)
+            a[0] += np.dot(tmp2, tmp2)
+            a[1] += 2 * np.dot(tmp1, tmp5)
+            a[1] += 2 * np.dot(tmp8, tmp2)
+            a[2] += np.dot(tmp5, tmp5)
+            a[2] += np.dot(tmp8, tmp8)
+        if nlf.np:
+            tmp3 = self.cqp * nlf.qpc
+            tmp6 = self.cqp * nlf.qp(dp)
+            a[0] += np.dot(tmp3, tmp3)
+            a[1] += 2 * np.dot(tmp3, tmp6)
+            a[2] += np.dot(tmp6, tmp6)
+            tmpa = nlf.kpp(p + dp) @ nlf.qpc
+            tmpc = nlf.fp(dp) + nlf.rp(p + dp)
+            if nlf.nf:
+                tmpa += nlf.kpf(p + dp) @ u[:, 1]
+                tmpc += nlf.kpf(p + dp) @ u[:, 0]
+            tmp4 = self.cfp * tmpa
+            tmp7 = self.cfp * tmpc
+            a[0] += np.dot(tmp4, tmp4)
+            a[1] += 2 * np.dot(tmp4, tmp7)
+            a[2] += np.dot(tmp7, tmp7)
+
+        if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
+            raise ValueError("Discriminant of quadratic constraint equation is not positive!")
+
+        return (-a[1] + np.array([1, -1]) * np.sqrt(d)) / (2 * a[0])
