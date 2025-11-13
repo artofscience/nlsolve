@@ -126,7 +126,7 @@ class ActiveStructureBasedOnSpringableModelFile:
     """
     Structure composed of passive and active springs, based on a Springable model file.
     All active elements in the structures share the same active DOF.
-    This class implements a force() and jacobian function() given an array of coordinates [all spatial coordinates, temperature coordinate]
+    This class implements a force() and jacobian() function given an array of coordinates [all spatial coordinates, temperature coordinate]
 
     """
 
