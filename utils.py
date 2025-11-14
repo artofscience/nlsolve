@@ -73,6 +73,14 @@ class Problem(ABC):
         self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
         self.qp2 = np.dot(self.qpc, self.qpc) if self.np else None
 
+    def set_load(self, ff=None, qp=None):
+        self.ffc = ff.astype(float) if ff is not None else np.zeros(self.nf)
+        self.qpc = qp.astype(float) if qp is not None else np.zeros(self.np)
+
+        # squared norm of load external load and prescribed motion
+        self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
+        self.qp2 = np.dot(self.qpc, self.qpc) if self.np else None
+
     def load(self, p: Point) -> State:
         load = 1.0 * self.ffc
         load -= self.kfp(p) @ self.qpc if self.np else 0.0  # adds to rhs if nonzero prescribed dof
