@@ -56,7 +56,7 @@ for kr in [0.01, 0.1, 1.0, 10, 100]:
 
     # initial point
     dl = nlf.spring.l0
-    q0 = q=np.array([0, 0, dl, 0, 2*dl, 0, 20])
+    q0 = np.array([0, 0, dl, 0, 2*dl, 0, 20])
     initial_state = Point(q0)
 
     # solve for equilibrium given initial point
