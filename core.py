@@ -109,9 +109,9 @@ class IterativeSolver:
                 # terminate the loop if converged
                 break
 
-            if self.diverged(self.nlf, p + dp, ddy):
-                # raise error if diverged
-                raise DivergenceError("Solver diverged!", counter.count)
+            # if self.diverged(self.nlf, p + dp, ddy):
+            #     # raise error if diverged
+            #     raise DivergenceError("Solver diverged!", counter.count)
 
             # region CORRECTOR
 

@@ -42,7 +42,7 @@ class SpringFromUnivariateBehavior:
         u = a
         alpha = u + self._behavior.get_natural_measure()
         d2vdalpha2 = self._behavior.hessian_energy(alpha)[0]
-        return d2vdalpha2
+        return np.array([d2vdalpha2])
     
     def get_rest_length(self):
         return self._behavior.get_natural_measure()
@@ -56,17 +56,19 @@ class LongitudinalSpringFromUnivariateBehavior:
         """
         self._behavior = read_behavior(filepath)
 
-    def force(self, x1, y1, x2, y2):
+    def force(self, q):
+        x1, y1, x2, y2 = q
         n1 = Node(x1, y1, False, False)
         n2 = Node(x2, y2, False, False)
-        l, dl = SegmentLength(n1, n2).compute(mode=Shape.MEASURE_JACOBIAN)
+        l, dl = SegmentLength(n1, n2).compute(output_mode=Shape.MEASURE_AND_JACOBIAN)
         dv = self._behavior.gradient_energy(l)[0]
         return dv * dl
-    
-    def jacobian(self, x1, y1, x2, y2):
+
+    def jacobian(self, q):
+        x1, y1, x2, y2 = q
         n1 = Node(x1, y1, False, False)
         n2 = Node(x2, y2, False, False)
-        l, dl, d2l = SegmentLength(n1, n2).compute(mode=Shape.MEASURE_JACOBIAN_AND_HESSIAN)
+        l, dl, d2l = SegmentLength(n1, n2).compute(output_mode=Shape.MEASURE_JACOBIAN_AND_HESSIAN)
         dv = self._behavior.gradient_energy(l)[0]
         d2v = self._behavior.hessian_energy(l)[0]
         return d2v * np.outer(dl, dl) + dv * d2l
