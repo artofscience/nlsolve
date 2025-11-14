@@ -1,21 +1,22 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from constraints import NewtonRaphson, GeneralizedArcLength, GeneralizedArcLengthVarCoeff
+from constraints import NewtonRaphson, GeneralizedArcLengthVarCoeff
 from controllers import Adaptive
 from core import IncrementalSolver, IterativeSolver
 from examples.active_springs.spring import SpringT
 from utils import Problem, Point
 from sympy import Symbol, exp
 from examples.springable_curves.structure_from_springable import LongitudinalSpringFromUnivariateBehavior
+from criteria import termination_default, EigenvalueChangeTermination
+from dynamics import DynamicsSolver
+from itertools import cycle
 
 class Jumper:
     def __init__(self):
         T = Symbol('T')
-        # k = (2.3 - 2.25 / (1 + exp(-0.31 * (T - 47.06))) + 0.0005 * (T - 40) ** 2)
-        k = (2.5 - 2.25 / (1 + exp(-0.31 * (T - 47.06))) + 0.0005 * (T - 40) ** 2)
-        # l0 = (12.08 - 5.41 / (1 + exp(-0.208 * (T - 54.5))))
-        l0 = (12.08 - 9.5 / (1 + exp(-0.208 * (T - 54.5))))
+        k = (2.3 - 2.25 / (1 + exp(-0.31 * (T - 47.06))) + 0.0005 * (T - 40) ** 2)
+        l0 = (12.08 - 5.41 / (1 + exp(-0.208 * (T - 54.5))))
 
 
         self.n = 9
@@ -55,7 +56,7 @@ ndf, ndp = len(ixf), len(ixp)
 nd = ndf + ndp
 
 # reference temperature
-T0 = 20
+T0 = 0
 temp_increase = 100
 
 # set prestretch
@@ -128,22 +129,40 @@ structure.set_load(qp=qpt)
 # change arc-length constraint coefficient wrt T
 constraint_arc.cqp[-1] = 0.5
 
-# solve using arc-length
-solutiont = stepper(initial_state_temp).solutions
+# set termination criteria
+load = termination_default()
+criterion = load | EigenvalueChangeTermination(margin=1e-4)
 
-# solve using NR
-stepper.solution_method = solver_NR
-solutiont_NR = stepper(initial_state_temp).solutions
+steppert = IncrementalSolver(solver_arc, controller, terminated=criterion, reset=False)
+steppert.p0 = initial_state_temp
 
-# solve using NR in opposite direction
-qpt[-1] = -temp_increase
-structure.set_load(qp=qpt)
-# stepper.solution_method = solver_arc
-solutiont_NR2 = stepper(solutiont_NR[-1]).solutions
+while not load.exceed: steppert()
+
+pc = steppert.history[0].solutions[-1]  # get first critical point
+
+# setup dynamics
+dynsolver = DynamicsSolver(structure)  # setup dynamics solver
+
+# dynamics using velocity
+dynsolver(pc, c=0.1, m=1, v0=-0.8, tol=1e-6)
+sol = dynsolver.history[0].solutions
+
+# solve from solution of dynamics solver
+steppert2 = IncrementalSolver(solver_arc, controller, terminated=termination_default())
+
+# steppert2(dynsolver.history[0].solutions[-1], y=steppert.history[0].time[-1])
+steppert2(dynsolver.history[0].solutions[-1], y=0)
+
+
+steppert2.solution_method.constraint.default_positive_direction = False
+# steppert2(dynsolver.history[0].solutions[-1], y=steppert.history[0].time[-1])
+steppert2(dynsolver.history[0].solutions[-1], y=0)
+
+
 
 #endregion
 
-#region POSTPROC
+# #region POSTPROC
 solstretch = [i.q[6] - x3 for i in solutionps]
 
 plt.figure(1)
@@ -175,23 +194,23 @@ plt.ylabel('Force')
 
 plt.figure(2)
 ax = plt.subplot(1, 3, 1)
-ax.set_xlim([T0, temp_increase])
+ax.set_xlim([T0, 2*temp_increase])
 ax.set_ylim([20, 55])
 
-# NR
-TNR = np.asarray([i.q[-1] for i in solutiont_NR])
-TNR2 = np.asarray([i.q[-1] for i in solutiont_NR2])
 
-plt.plot(TNR, [i.q[2] for i in solutiont_NR], 'k.--', label=f'LCE X{1} NR')
-plt.plot(TNR, [i.q[4] for i in solutiont_NR], 'r.--', label=f'LCE X{2} NR')
+colours = cycle(["black", "red", "green", "blue"])
 
-plt.plot(TNR2, [i.q[2] for i in solutiont_NR2], 'k*--', label=f'LCE X{1} BACK')
-plt.plot(TNR2, [i.q[4] for i in solutiont_NR2], 'r*--', label=f'LCE X{2} BACK')
+for out in steppert.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[2] for i in out.solutions], 'o-', color=next(colours))
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[4] for i in out.solutions], 'o-', color=next(colours))
 
-# arclength
-T = np.asarray([i.q[-1] for i in solutiont])
-plt.plot(T, [i.q[2] for i in solutiont], 'ko-', label=f'LCE X{1} ARC')
-plt.plot(T, [i.q[4] for i in solutiont], 'ro-', label=f'LCE X{2} ARC')
+for out in steppert2.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[2] for i in out.solutions], 'o-', color=next(colours))
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[4] for i in out.solutions], 'o-', color=next(colours))
+
+plt.plot([i.q[-1] for i in sol], [i.q[2] for i in sol], 'o--', color=next(colours))
+plt.plot([i.q[-1] for i in sol], [i.q[4] for i in sol], 'o--', color=next(colours))
+
 
 plt.xlabel('Temperature')
 plt.ylabel('Position')
@@ -201,22 +220,33 @@ plt.axhline(y=initial_state_temp.q[2], color='b', linestyle='-')
 plt.axhline(y=initial_state_temp.q[4], color='b', linestyle='-')
 
 ax = plt.subplot(1, 3, 2)
-ax.set_xlim([T0, temp_increase])
-plt.plot(TNR, [i.q[4] - i.q[2] for i in solutiont_NR], 'k.--', label='NR')
-plt.plot(TNR2, [i.q[4] - i.q[2] for i in solutiont_NR2], 'k*--', label='BACK')
-plt.plot(T, [i.q[4] - i.q[2] for i in solutiont], 'ko-', label='ARC')
+ax.set_xlim([T0, 2*temp_increase])
+
+for out in steppert.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[4] - i.q[2] for i in out.solutions], 'o-', color=next(colours))
+
+for out in steppert2.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.q[4] - i.q[2] for i in out.solutions], 'o-', color=next(colours))
+
+
+plt.plot([i.q[-1] for i in sol], [i.q[4] - i.q[2] for i in sol], 'o--', color=next(colours))
+
 plt.xlabel('Temperature')
 plt.ylabel('LCE Length')
-plt.legend()
 
 ax = plt.subplot(1, 3, 3)
-ax.set_xlim([T0, temp_increase])
-plt.plot(TNR, [i.f[0] for i in solutiont_NR], 'k.-', label='NR')
-plt.plot(TNR2, [i.f[0] for i in solutiont_NR2], 'k*-', label='BACK')
-plt.plot(T, [i.f[0] for i in solutiont], 'ko-', label='ARC')
+ax.set_xlim([T0, 2*temp_increase])
+
+for out in steppert.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.f[0] for i in out.solutions], 'o-', color=next(colours))
+
+for out in steppert2.history:
+    plt.plot([i.q[-1] for i in out.solutions], [i.f[0] for i in out.solutions], 'o-', color=next(colours))
+
+plt.plot([i.q[-1] for i in sol], [i.f[0] for i in sol], 'o--', color=next(colours))
+
 plt.xlabel('Temperature')
 plt.ylabel('Force')
-plt.legend()
 
 plt.show()
 #endregion
