@@ -11,39 +11,15 @@ from examples.springable_curves.structure_from_springable import LongitudinalSpr
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
 from itertools import cycle
-
-class Jumper:
-    def __init__(self):
-        T = Symbol('T')
-        k = (2.3 - 2.25 / (1 + exp(-0.31 * (T - 47.06))) + 0.0005 * (T - 40) ** 2)
-        l0 = (12.08 - 5.41 / (1 + exp(-0.208 * (T - 54.5))))
+from jumper import Jumper, LCE
 
 
-        self.n = 9
-        self.lce = SpringT(l0, k)
-        self.soft = LongitudinalSpringFromUnivariateBehavior("csv_files/soft_2.csv")
-        self.snap = LongitudinalSpringFromUnivariateBehavior("csv_files/snap_5.csv")
-        self.ix_lce = [2, 3, 4, 5, 8]
-        self.ix_soft = [0, 1, 2, 3]
-        self.ix_snap = [4, 5, 6, 7]
-
-    def force(self, q):
-        f = np.zeros(self.n, dtype=float)
-        f[self.ix_lce] += self.lce.force(q[self.ix_lce])
-        f[self.ix_soft] += self.soft.force(q[self.ix_soft])
-        f[self.ix_snap] += self.snap.force(q[self.ix_snap])
-        return f
-
-    def jacobian(self, q):
-        K = np.zeros((self.n, self.n), dtype=float)
-        K[np.ix_(self.ix_lce, self.ix_lce)] += self.lce.jacobian(q[self.ix_lce])
-        K[np.ix_(self.ix_soft, self.ix_soft)] += self.soft.jacobian(q[self.ix_soft])
-        K[np.ix_(self.ix_snap, self.ix_snap)] += self.snap.jacobian(q[self.ix_snap])
-        return K
 
 # [00, 01, 02, 03, 04, 05, 06, 07, 8]
 
 # [x0, y0, x1, y1, x2, y2, x3, y3, T]
+
+
 
 # create Jumper
 nlf = Jumper()
