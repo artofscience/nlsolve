@@ -14,7 +14,7 @@ Analysis of two-DOF inclined truss with severe snapback behaviour.
 
 
 class InclinedTrussSnapback:
-    def __init__(self, w: float = 0.1, theta0: float = pi / 2.5):
+    def __init__(self, w: float = 0.3, theta0: float = pi / 3):
         self.w = w
         self.theta0 = theta0
 
@@ -35,11 +35,11 @@ class InclinedTrussSnapback:
 if __name__ == "__main__":
     truss = InclinedTrussSnapback()
 
-    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.5]))
+    problem = Problem(truss, ixf=[0, 1], ff=np.array([0, 0.7]))
 
     solver = IterativeSolver(problem, GeneralizedArcLength())
 
-    controller = Adaptive(0.1, max=0.5, incr=1.2, decr=0.1, min=0.0001)
+    controller = Adaptive(0.01, max=0.05, incr=1.2, decr=0.1, min=0.0001)
 
     stepper = IncrementalSolver(solver, controller)
 
