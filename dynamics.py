@@ -61,7 +61,7 @@ class DynamicsSolver:
         n = len(x) // 2
         pos = 1.0 * p0.q
         pos[prob.ixf] = x[:n] if m else x
-        elastic_force = prob.nlf.force(pos)[prob.ixf]
+        elastic_force = prob.problem.force(pos)[prob.ixf]
         external_load = p0.f[prob.ixf]
         tmp = external_load - elastic_force  # diff between external and elastic load
         vel = x[n:] if m else tmp / c  # velocity

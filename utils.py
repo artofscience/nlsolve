@@ -24,27 +24,6 @@ class Plotter:
                  color=next(self.colours))
 
 
-def ddp(nlf, p: Point, u: np.ndarray, y: float) -> Point:
-    """
-    Provides the iterative updated state given some iterative load parameter.
-
-    :param p: current state (p + dp)
-    :param u: resultants from solve
-    :param y: iterative load parameter
-    :return:
-    """
-    ddqf, ddqp, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
-
-    if nlf.nf:
-        ddqf = u[:, 0] + y * u[:, 1]
-        ddff = y * nlf.ffc
-    if nlf.np:
-        ddqp = y * nlf.qpc
-        ddfp = nlf.rp(p) + y * nlf.kpp(p) @ nlf.qpc
-        ddfp += nlf.kpf(p) @ ddqf if nlf.nf else 0.0
-
-    return nlf.point(ddqf, ddqp, ddff, ddfp)
-
 
 class Problem(ABC):
     """
