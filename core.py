@@ -249,25 +249,31 @@ class IterativeSolver:
         # region PREDICTOR
 
         # initialize structure of solve return values if free degrees of freedom
-        ddx = np.zeros((self.problem.nf, 2), dtype=float) if self.problem.nf else None
+        ddqf = np.zeros((self.problem.nf, 2), dtype=float) if self.problem.nf else None
 
         # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
         # note: for predictor ddx0 = 0, hence only a single rhs for this solve
         if self.problem.nf:
             # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
             # Consider there is no equilibrium (yet)
-            ddx[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
+            ddqf[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
+
+        ddfp = np.zeros((self.problem.np, 2), dtype=float) if self.problem.np else None
+
+        if self.problem.np:
+            ddfp[:, 0] = self.problem.rp(p, y) + self.problem.kpf(p, y) @ ddqf[:, 0]
+            ddfp[:, 1] = self.problem.loadp(p, y) + self.problem.kpf(p, y) @ ddqf[:, 1]
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
         # note for first iterate dy = ddy and dp = ddp
         try:
-            ddy = self.predictor(p, sol, ddx, y)
+            ddy = self.predictor(p, sol, ddqf, ddfp, y)
         except ValueError as error:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        dp = self.ddp(p, ddx, y, ddy)  # calculate prediction based on iterative load parameter
+        dp = self.ddp(p, ddqf, ddfp, y, ddy)  # calculate prediction based on iterative load parameter
         dy = 1.0 * ddy
         self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
@@ -298,22 +304,27 @@ class IterativeSolver:
 
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.problem.nf:
-                ddx[:, :] = np.linalg.solve(self.problem.kff(p + dp, y + dy),
+                ddqf[:, :] = np.linalg.solve(self.problem.kff(p + dp, y + dy),
                                             np.array([-self.problem.rf(p + dp, y + dy), self.problem.loadf(p + dp, y + dy)]).T)
+
+            if self.problem.np:
+                ddfp[:, 0] = self.problem.rp(p + dp, y + dy) + self.problem.kpf(p + dp, y + dy) @ ddqf[:, 0]
+                ddfp[:, 1] = self.problem.loadp(p + dp, y + dy) + self.problem.kpf(p + dp, y + dy) @ ddqf[:, 1]
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
             try:
-                ddy = self.corrector(p, dp, ddx, y)
+                ddy = self.corrector(p, dp, ddqf, ddfp, y)
             except ValueError as error:
                 self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                 raise ValueError("A suitable correction cannot be found!", counter.count)
 
-            dp += self.ddp(p + dp, ddx, y + dy, ddy)  # calculate correction based on iterative load parameter and update incremental state
+            dp += self.ddp(p + dp, ddqf, ddfp, y + dy, ddy)  # calculate correction based on iterative load parameter and update incremental state
+            dy += ddy
+
             self.logger.debug(
                 "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
-            dy += ddy
 
             # endregion
 
@@ -321,7 +332,7 @@ class IterativeSolver:
 
         return dp, dy, counter.count, tries
 
-    def ddp(self, p: Point, u: np.ndarray, y: float, ddy: float) -> Point:
+    def ddp(self, p: Point, ddxf: np.ndarray, ddxp: np.ndarray, y: float, ddy: float) -> Point:
         """
         Provides the iterative updated state given some iterative load parameter.
 
@@ -333,47 +344,42 @@ class IterativeSolver:
         ddqf, ddqp, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
 
         if self.problem.nf:
-            ddqf = u[:, 0] + ddy * u[:, 1]
+            ddqf = ddxf[:, 0] + ddy * ddxf[:, 1]
             ddff = ddy * self.problem.external_load(p)
         if self.problem.np:
             ddqp = ddy * self.problem.external_state(p)
-            ddfp = self.problem.rp(p, y) + ddy * self.problem.loadp(p, y)
-            ddfp += self.problem.kpf(p, y) @ ddqf if self.problem.nf else 0.0
-
+            ddfp = ddxp[:, 0] + ddy * ddxp[:, 1]
         return self.problem.point(ddqf, ddqp, ddff, ddfp)
 
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray, y: float = 0.0) -> float:
-        roots = self.get_roots_predictor(p, ddx, self.dl)
-        cps = [self.ddp(p, ddx, y, i) for i in roots]
+    def predictor(self, p: Point, sol: List[Point], ddqf: np.ndarray, ddfp: np.ndarray, y: float = 0.0) -> float:
+        roots = self.get_roots_predictor(p, ddqf, ddfp, self.dl)
+        cps = [self.ddp(p, ddqf, ddfp, y, i) for i in roots]
         return self.select_root_predictor(p, sol, cps, roots)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, y: float = 0.0) -> float:
+    def corrector(self, p: Point, dp: Point, ddqf: np.ndarray, ddfp: np.ndarray, y: float = 0.0) -> float:
         try:
-            roots = self.get_roots_corrector(p, dp, ddx, self.dl)
+            roots = self.get_roots_corrector(p, dp, ddqf, ddfp, self.dl)
         except ValueError as error:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
-        cps = [self.ddp(p + dp, ddx, y, i) for i in roots]
+        cps = [self.ddp(p + dp, ddqf, ddfp, y, i) for i in roots]
         return self.select_root_corrector(dp, cps, roots)
 
-    def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float):
+    def get_roots_predictor(self, p: Point, ddqf: np.ndarray, ddfp: np.ndarray, dl: float):
         a = 0.0
         if self.problem.nf:
-            tmp1 = self.cqf * u[:, 1]
-            tmp2 = self.cff * self.problem.external_load(p)
-            a += np.dot(tmp1, tmp1) + np.dot(tmp2, tmp2)
+            tmp1 = ddqf[:, 1]
+            tmp2 = self.problem.external_load(p)
+            a += self.cqf * np.dot(tmp1, tmp1) + self.cff * np.dot(tmp2, tmp2)
         if self.problem.np:
-            tmpa = self.problem.kpp(p) @ self.problem.external_state(p)
-            if self.problem.nf:
-                tmpa += self.problem.kpf(p) @ u[:, 1]
-            tmp3 = self.cfp * tmpa
-            tmp4 = self.cqp * self.problem.external_state(p)
-            a += np.dot(tmp3, tmp3) + np.dot(tmp4, tmp4)
+            tmp3 = ddfp[:, 1]
+            tmp4 = self.problem.external_state(p)
+            a += self.cfp * np.dot(tmp3, tmp3) + self.cqp * np.dot(tmp4, tmp4)
 
         return np.array([1, -1]) * dl / np.sqrt(a)
 
-    def get_roots_corrector(self, p: Point, dp: Point, u: np.ndarray, dl: float):
+    def get_roots_corrector(self, p: Point, dp: Point, ddqf: np.ndarray, ddfp: np.ndarray, dl: float):
         nlf = self.problem
 
         a = np.zeros(3)
@@ -382,33 +388,24 @@ class IterativeSolver:
 
 
         if nlf.nf:
-            tmp1 = self.cqf * u[:,1]
-            tmp2 = self.cff * nlf.external_load(p)
-            tmp5 = self.cqf * (nlf.qf(dp) + u[:, 0])
-            tmp8 = self.cff * nlf.ff(dp)
+            tmp = nlf.qf(dp) + ddqf[:, 0]
 
-            a[0] += np.dot(tmp1, tmp1)
-            a[0] += np.dot(tmp2, tmp2)
-            a[1] += 2 * np.dot(tmp1, tmp5)
-            a[1] += 2 * np.dot(tmp8, tmp2)
-            a[2] += np.dot(tmp5, tmp5)
-            a[2] += np.dot(tmp8, tmp8)
+            a[0] += np.dot(ddqf[:, 1], ddqf[:, 1])
+            a[0] += np.dot(nlf.external_load(p), nlf.external_load(p))
+            a[1] += 2 * np.dot(ddqf[:, 1], tmp)
+            a[1] += 2 * np.dot(nlf.ff(dp), nlf.external_load(p))
+            a[2] += np.dot(tmp, tmp)
+            a[2] += np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
-            tmp3 = self.cqp * nlf.external_state(p)
-            tmp6 = self.cqp * nlf.qp(dp)
-            a[0] += np.dot(tmp3, tmp3)
-            a[1] += 2 * np.dot(tmp3, tmp6)
-            a[2] += np.dot(tmp6, tmp6)
-            tmpa = nlf.kpp(p + dp) @ nlf.external_state(p)
-            tmpc = nlf.fp(dp) + nlf.rp(p + dp)
-            if nlf.nf:
-                tmpa += nlf.kpf(p + dp) @ u[:, 1]
-                tmpc += nlf.kpf(p + dp) @ u[:, 0]
-            tmp4 = self.cfp * tmpa
-            tmp7 = self.cfp * tmpc
-            a[0] += np.dot(tmp4, tmp4)
-            a[1] += 2 * np.dot(tmp4, tmp7)
-            a[2] += np.dot(tmp7, tmp7)
+            a[0] += np.dot(nlf.external_state(p), nlf.external_state(p))
+            a[1] += 2 * np.dot(nlf.external_state(p), nlf.qp(dp))
+            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
+
+            tmp = nlf.fp(dp) + ddfp[:, 0]
+
+            a[0] += np.dot(ddfp[:, 1], ddfp[:, 1])
+            a[1] += 2 * np.dot( ddfp[:, 1], tmp)
+            a[2] += np.dot(tmp, tmp)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
