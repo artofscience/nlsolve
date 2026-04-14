@@ -45,13 +45,11 @@ class Problem(ABC):
         self.np = len(self.ixp)
         self.n = self.nf + self.np
 
-    @abstractmethod
     def external_load(self, p: Point):
-        pass
+        return np.zeros(self.nf, dtype=float)
 
-    @abstractmethod
     def external_state(self, p: Point):
-        pass
+        return np.zeros(self.np, dtype=float)
 
     def jac_external_state(self, p: Point, y: float = 0.0):
         pass
