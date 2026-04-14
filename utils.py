@@ -35,7 +35,7 @@ class Problem(ABC):
     That is, either external_load OR prescribed_motion OR BOTH are to be provided.
     """
 
-    def __init__(self, nlf, ixf=None, ixp=None, ff=None, qp=None):
+    def __init__(self, nlf, ixf=None, ixp=None):
         self.nlf = nlf
 
         self.ixf = ixf if ixf is not None else []
@@ -53,10 +53,12 @@ class Problem(ABC):
     def external_state(self, p: Point):
         pass
 
-    def load(self, p: Point, y: float = 0.0) -> State:
-        load = 1.0 * self.external_load(p)
-        load -= self.kfp(p) @ self.external_state(p) if self.np else 0.0  # adds to rhs if nonzero prescribed dof
-        return load
+    def jac_external_state(self, p: Point, y: float = 0.0):
+        pass
+
+    def jac_external_load(self, p: Point, y: float = 0.0):
+        pass
+
 
     def g(self, p: Point) -> State:
         return self.nlf.force(p.q)
@@ -76,20 +78,40 @@ class Problem(ABC):
     def rp(self, p: Point, y: float = 0.0) -> State:
         return self.r(p, y)[self.ixp]
 
-    def k(self, p: Point, y: float = 0.0) -> State:
-        return self.nlf.jacobian(p.q)
+    def dg(self, p: Point, y: float = 0.0) -> State:
+        return self.nlf.jacobian(p.q, y)
+
+    def dgff(self, p: Point, y: float = 0.0):
+        return self.dg(p, y)[self.ixf, :][:, self.ixf]
+
+    def dgpp(self, p: Point, y: float = 0.0):
+        return self.dg(p, y)[self.ixp, :][:, self.ixp]
+
+    def dgfp(self, p: Point, y: float = 0.0):
+        return self.dg(p, y)[self.ixf, :][:, self.ixp]
+
+    def dgpf(self, p: Point, y: float = 0.0):
+        return self.dg(p, y)[self.ixp, :][:, self.ixf]
 
     def kff(self, p: Point, y: float = 0.0):
-        return self.k(p, y)[self.ixf, :][:, self.ixf]
+        tmp = self.dgff(p, y)
+        # if x := self.jac_external_load(p) is not None:
+        #     tmp -= y * x
+        # if x := self.jac_external_state(p) is not None:
+        #     tmp += y * self.dgfp(p, y) @ x
+        return tmp
 
-    def kpp(self, p: Point, y: float = 0.0):
-        return self.k(p, y)[self.ixp, :][:, self.ixp]
+    def kpf(self, p: Point, y: float = 0.0) -> State:
+        tmp = self.dgpf(p, y)
+        # if x := self.jac_external_state(p) is not None:
+        #     tmp += y * self.dgpp(p, y) @ x
+        return tmp
 
-    def kfp(self, p: Point, y: float = 0.0):
-        return self.k(p, y)[self.ixf, :][:, self.ixp]
+    def loadf(self, p: Point, y: float = 0.0) -> State:
+        return self.external_load(p) - self.dgfp(p, y) @ self.external_state(p)
 
-    def kpf(self, p: Point, y: float = 0.0):
-        return self.k(p, y)[self.ixp, :][:, self.ixf]
+    def loadp(self, p: Point, y: float = 0.0) -> State:
+        return self.dgpp(p, y) @ self.external_state(p)
 
     def point(self, qf, qp, ff, fp):
         q = np.zeros(self.n)

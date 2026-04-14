@@ -256,7 +256,7 @@ class IterativeSolver:
         if self.problem.nf:
             # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
             # Consider there is no equilibrium (yet)
-            ddx[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.load(p, y)]).T)
+            ddx[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
@@ -299,7 +299,7 @@ class IterativeSolver:
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.problem.nf:
                 ddx[:, :] = np.linalg.solve(self.problem.kff(p + dp, y + dy),
-                                            np.array([-self.problem.rf(p + dp, y + dy), self.problem.load(p + dp, y + dy)]).T)
+                                            np.array([-self.problem.rf(p + dp, y + dy), self.problem.loadf(p + dp, y + dy)]).T)
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
@@ -337,7 +337,7 @@ class IterativeSolver:
             ddff = ddy * self.problem.external_load(p)
         if self.problem.np:
             ddqp = ddy * self.problem.external_state(p)
-            ddfp = self.problem.rp(p, y) + ddy * self.problem.kpp(p, y) @ self.problem.external_state(p)
+            ddfp = self.problem.rp(p, y) + ddy * self.problem.loadp(p, y)
             ddfp += self.problem.kpf(p, y) @ ddqf if self.problem.nf else 0.0
 
         return self.problem.point(ddqf, ddqp, ddff, ddfp)
