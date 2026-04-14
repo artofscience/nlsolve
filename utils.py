@@ -53,7 +53,7 @@ class Problem(ABC):
     def external_state(self, p: Point):
         pass
 
-    def load(self, p: Point) -> State:
+    def load(self, p: Point, y: float = 0.0) -> State:
         load = 1.0 * self.external_load(p)
         load -= self.kfp(p) @ self.external_state(p) if self.np else 0.0  # adds to rhs if nonzero prescribed dof
         return load
@@ -67,29 +67,29 @@ class Problem(ABC):
     def gf(self, p: Point) -> State:
         return self.g(p)[self.ixf]
 
-    def r(self, p: Point) -> State:
+    def r(self, p: Point, y: float = 0.0) -> State:
         return self.g(p) - p.f
 
-    def rf(self, p: Point) -> State:
-        return self.r(p)[self.ixf]
+    def rf(self, p: Point, y: float = 0.0) -> State:
+        return self.r(p, y)[self.ixf]
 
-    def rp(self, p: Point) -> State:
-        return self.r(p)[self.ixp]
+    def rp(self, p: Point, y: float = 0.0) -> State:
+        return self.r(p, y)[self.ixp]
 
-    def k(self, p: Point) -> State:
+    def k(self, p: Point, y: float = 0.0) -> State:
         return self.nlf.jacobian(p.q)
 
-    def kff(self, p):
-        return self.k(p)[self.ixf, :][:, self.ixf]
+    def kff(self, p: Point, y: float = 0.0):
+        return self.k(p, y)[self.ixf, :][:, self.ixf]
 
-    def kpp(self, p):
-        return self.k(p)[self.ixp, :][:, self.ixp]
+    def kpp(self, p: Point, y: float = 0.0):
+        return self.k(p, y)[self.ixp, :][:, self.ixp]
 
-    def kfp(self, p):
-        return self.k(p)[self.ixf, :][:, self.ixp]
+    def kfp(self, p: Point, y: float = 0.0):
+        return self.k(p, y)[self.ixf, :][:, self.ixp]
 
-    def kpf(self, p):
-        return self.k(p)[self.ixp, :][:, self.ixf]
+    def kpf(self, p: Point, y: float = 0.0):
+        return self.k(p, y)[self.ixp, :][:, self.ixf]
 
     def point(self, qf, qp, ff, fp):
         q = np.zeros(self.n)

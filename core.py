@@ -139,7 +139,7 @@ class IncrementalSolver:
 
                     predictor_solutions = [self.history[-1].solutions[-2]] + equilibrium_solutions if len(
                         self.history) and not self.reset else equilibrium_solutions
-                    dp, dy, iterates, tries = self.solution_method(predictor_solutions, self.controller.value)
+                    dp, dy, iterates, tries = self.solution_method(predictor_solutions, self.y, self.controller.value)
                     iterative_tries += iterates
                     self.terminated(self.solution_method.problem, equilibrium_solutions, dp, self.y + dy, dy)
                     if self.terminated.exceed and not self.terminated.accept:
@@ -236,7 +236,7 @@ class IterativeSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
-    def __call__(self, sol: List[Point], length: float = 0.0) -> Tuple[Point, float, int, List[Point]]:
+    def __call__(self, sol: List[Point], y: float = 0.0, length: float = 0.0) -> Tuple[Point, float, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
         self.converged.reset()
         self.diverged.reset()
@@ -256,23 +256,24 @@ class IterativeSolver:
         if self.problem.nf:
             # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
             # Consider there is no equilibrium (yet)
-            ddx[:, :] = np.linalg.solve(self.problem.kff(p), np.array([-self.problem.rf(p), self.problem.load(p)]).T)
+            ddx[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.load(p, y)]).T)
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
         # note for first iterate dy = ddy and dp = ddp
         try:
-            ddy = self.predictor(p, sol, ddx)
+            ddy = self.predictor(p, sol, ddx, y)
         except ValueError as error:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("A suitable prediction cannot be found!", 0)
 
-        dp = self.ddp(p, ddx, ddy)  # calculate prediction based on iterative load parameter
-        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp))))
+        dp = self.ddp(p, ddx, y, ddy)  # calculate prediction based on iterative load parameter
+        dy = 1.0 * ddy
+        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
         # endregion
 
-        dy = 1.0 * ddy
+
 
         counter = Counter(self.maximum_corrections)
 
@@ -285,7 +286,7 @@ class IterativeSolver:
                 #                    counter.count)
                 break
 
-            if self.converged(self.problem, p + dp, ddy):
+            if self.converged(self.problem, p + dp, y + dy, ddy):
                 # terminate the loop if converged
                 break
 
@@ -297,21 +298,20 @@ class IterativeSolver:
 
             # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
             if self.problem.nf:
-                ddx[:, :] = np.linalg.solve(self.problem.kff(p + dp),
-                                            np.array([-self.problem.rf(p + dp), self.problem.load(p + dp)]).T)
+                ddx[:, :] = np.linalg.solve(self.problem.kff(p + dp, y + dy),
+                                            np.array([-self.problem.rf(p + dp, y + dy), self.problem.load(p + dp, y + dy)]).T)
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
             try:
-                ddy = self.corrector(p, dp, ddx)
+                ddy = self.corrector(p, dp, ddx, y)
             except ValueError as error:
                 self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
                 raise ValueError("A suitable correction cannot be found!", counter.count)
 
-            dp += self.ddp(p + dp, ddx,
-                      ddy)  # calculate correction based on iterative load parameter and update incremental state
+            dp += self.ddp(p + dp, ddx, y + dy, ddy)  # calculate correction based on iterative load parameter and update incremental state
             self.logger.debug(
-                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp))))
+                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
             dy += ddy
 
@@ -321,7 +321,7 @@ class IterativeSolver:
 
         return dp, dy, counter.count, tries
 
-    def ddp(self, p: Point, u: np.ndarray, y: float) -> Point:
+    def ddp(self, p: Point, u: np.ndarray, y: float, ddy: float) -> Point:
         """
         Provides the iterative updated state given some iterative load parameter.
 
@@ -333,28 +333,28 @@ class IterativeSolver:
         ddqf, ddqp, ddff, ddfp = 0.0, 0.0, 0.0, 0.0
 
         if self.problem.nf:
-            ddqf = u[:, 0] + y * u[:, 1]
-            ddff = y * self.problem.external_load(p)
+            ddqf = u[:, 0] + ddy * u[:, 1]
+            ddff = ddy * self.problem.external_load(p)
         if self.problem.np:
-            ddqp = y * self.problem.external_state(p)
-            ddfp = self.problem.rp(p) + y * self.problem.kpp(p) @ self.problem.external_state(p)
-            ddfp += self.problem.kpf(p) @ ddqf if self.problem.nf else 0.0
+            ddqp = ddy * self.problem.external_state(p)
+            ddfp = self.problem.rp(p, y) + ddy * self.problem.kpp(p, y) @ self.problem.external_state(p)
+            ddfp += self.problem.kpf(p, y) @ ddqf if self.problem.nf else 0.0
 
         return self.problem.point(ddqf, ddqp, ddff, ddfp)
 
-    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray) -> float:
+    def predictor(self, p: Point, sol: List[Point], ddx: np.ndarray, y: float = 0.0) -> float:
         roots = self.get_roots_predictor(p, ddx, self.dl)
-        cps = [self.ddp(p, ddx, i) for i in roots]
+        cps = [self.ddp(p, ddx, y, i) for i in roots]
         return self.select_root_predictor(p, sol, cps, roots)
 
-    def corrector(self, p: Point, dp: Point, ddx: np.ndarray) -> float:
+    def corrector(self, p: Point, dp: Point, ddx: np.ndarray, y: float = 0.0) -> float:
         try:
             roots = self.get_roots_corrector(p, dp, ddx, self.dl)
         except ValueError as error:
             self.logger.error("{}: {}".format(type(error).__name__, error.args[0]))
             raise ValueError("Roots of constraint equation for the corrector cannot be found!")
 
-        cps = [self.ddp(p + dp, ddx, i) for i in roots]
+        cps = [self.ddp(p + dp, ddx, y, i) for i in roots]
         return self.select_root_corrector(dp, cps, roots)
 
     def get_roots_predictor(self, p: Point, u: np.ndarray, dl: float):
