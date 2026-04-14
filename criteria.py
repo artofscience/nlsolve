@@ -233,8 +233,8 @@ class CriterionP(CriterionBase):
         self.threshold = threshold
         self.operator = is_x_then
 
-    def __call__(self, nlf: Problem, p: Point, ddy: float) -> bool:
-        value = self.call_to_fnc(nlf, p, ddy)  # the value to work with it the output of the provided function
+    def __call__(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
+        value = self.call_to_fnc(nlf, p, y, ddy)  # the value to work with it the output of the provided function
         self.ref = 1.0 * value if self.ref is None else self.ref  # set reference if not done yet
         done = self.operator(value, self.threshold)  # compare value to given threshold
         if done:  # print to console that criterion is satisfied and provide info on values (reference, threshold and value)
@@ -246,7 +246,7 @@ class CriterionP(CriterionBase):
     def reset(self):
         self.ref = None  # reset reference value
 
-    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
         return self.fnc(p)  # only takes the Point
 
 
@@ -272,9 +272,23 @@ class CriterionX(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
         return self.fnc(nlf, p)  # note: takes the nonlinear function and the state (point)
 
+
+class CriterionX2(CriterionP):
+    """
+    """
+
+    def __init__(self, fnc: Callable = lambda nlf, p, y: np.linalg.norm(nlf.r(p, y)),
+                 is_x_then: Callable = lt,
+                 threshold: float = 1.0e-9,
+                 name: str = None, logging_level: int = logging.INFO,
+                 ):
+        super().__init__(fnc, is_x_then, threshold, name, logging_level)
+
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
+        return self.fnc(nlf, p, y)  # note: takes the nonlinear function and the state (point) and the loading
 
 class CriterionXH(CriterionX):
     """
@@ -300,7 +314,7 @@ class CriterionXH(CriterionX):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
         self.point_old = None  # initialize the old point
 
-    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
         if self.point_old is None:
             self.point_old = 0.0 * p  # set the old point of not done yet, here initialized to zero point
         value = self.fnc(nlf, p, self.point_old)  # note the old point is the third input
@@ -320,7 +334,7 @@ class CriterionY(CriterionP):
                  ):
         super().__init__(fnc, is_x_then, threshold, name, logging_level)
 
-    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
         return self.fnc(ddy)
 
     def reset(self):
@@ -337,7 +351,7 @@ class CriterionYH(CriterionY):
         self.old_ref = value
         self.ddy_old = value
 
-    def call_to_fnc(self, nlf: Problem, p: Point, ddy: float) -> bool:
+    def call_to_fnc(self, nlf: Problem, p: Point, y: float, ddy: float) -> bool:
         value = self.fnc(ddy, self.ddy_old)
         self.ddy_old = 1.0 * ddy
         return value
@@ -350,7 +364,7 @@ def residual_norm(threshold, name: str = "Residual norm", logging_level: int = l
     """
     Creates instance of CriterionX that checks the 2-norm of the residual vector.
     """
-    return CriterionX(lambda x, y: np.linalg.norm(x.r(y)), lt, threshold)
+    return CriterionX2(lambda x, y, z: np.linalg.norm(x.r(y, z)), lt, threshold)
 
 
 def divergence_default():

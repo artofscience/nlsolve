@@ -244,10 +244,10 @@ class IterativeSolver:
             # Consider there is no equilibrium (yet)
             ddqf[:, :] = np.linalg.solve(self.problem.kff(p, y),
                                          np.array(
-                                             [-self.problem.rf(p), self.problem.loadf(p, y)]).T)
+                                             [-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
 
         if self.problem.np:
-            ddfp[:, 0] = self.problem.rp(p)
+            ddfp[:, 0] = self.problem.rp(p, y)
             ddfp[:, 1] = self.problem.loadp(p, y)
             if self.problem.nf:
                 ddfp[:, 0] += self.problem.kpf(p, y) @ ddqf[:, 0]
@@ -285,7 +285,7 @@ class IterativeSolver:
 
         dp = self.ddp(p, ddqf, ddfp, y, ddy)  # calculate prediction based on iterative load parameter
         dy = 1.0 * ddy
-        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp))))
+        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
         # endregion
 
@@ -302,7 +302,7 @@ class IterativeSolver:
                 #                    counter.count)
                 break
 
-            if self.converged(self.problem, p + dp, ddy):
+            if self.converged(self.problem, p + dp, y + dy, ddy):
                 # terminate the loop if converged
                 break
 
@@ -326,7 +326,7 @@ class IterativeSolver:
             dy += ddy
 
             self.logger.debug(
-                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp))))
+                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
 
 
             # endregion

@@ -51,12 +51,12 @@ class Problem(ABC):
     def external_state(self, p: Point):
         return np.zeros(self.np, dtype=float)
 
-    def jac_external_state(self, p: Point, y: float = 0.0):
-        pass
+    def jac_external_state(self, p: Point):
+        return None
 
-    def jac_external_load(self, p: Point, y: float = 0.0):
-        pass
-
+    @abstractmethod
+    def jac_external_load(self, p: Point):
+        return None
 
     def g(self, p: Point) -> State:
         return self.nlf.force(p.q)
@@ -67,14 +67,26 @@ class Problem(ABC):
     def gf(self, p: Point) -> State:
         return self.g(p)[self.ixf]
 
-    def r(self, p: Point) -> State:
-        return self.g(p) - p.f
+    # def r(self, p: Point, y: float = 0.0) -> State:
+    #     return self.g(p) - p.f
+    #
+    # def rf(self, p: Point, y: float = 0.0) -> State:
+    #     return self.r(p)[self.ixf]
+    #
+    # def rp(self, p: Point, y: float = 0.0) -> State:
+    #     return self.r(p)[self.ixp]
 
-    def rf(self, p: Point) -> State:
-        return self.r(p)[self.ixf]
+    def r(self, p: Point, y: float = 0.0) -> State:
+        tmp = np.zeros(self.n, dtype=float)
+        tmp[self.ixf] = self.rf(p, y)
+        tmp[self.ixp] = self.rp(p, y)
+        return tmp
 
-    def rp(self, p: Point) -> State:
-        return self.r(p)[self.ixp]
+    def rf(self, p: Point, y: float = 0.0) -> State:
+        return self.gf(p) - y * self.external_load(p)
+
+    def rp(self, p: Point, y: float = 0.0) -> State:
+        return self.gp(p) - self.fp(p)
 
     def dg(self, p: Point, y: float = 0.0) -> State:
         return self.nlf.jacobian(p.q, y)
@@ -92,9 +104,9 @@ class Problem(ABC):
         return self.dg(p, y)[self.ixp, :][:, self.ixf]
 
     def kff(self, p: Point, y: float = 0.0):
-        tmp = self.dgff(p, y)
-        # if x := self.jac_external_load(p) is not None:
-        #     tmp -= y * x
+        tmp = self.dgff(p, y) - y * self.jac_external_load(p)
+        # if self.jac_external_load(p) is not None:
+        #     tmp -= y * self.jac_external_load(p)
         # if x := self.jac_external_state(p) is not None:
         #     tmp += y * self.dgfp(p, y) @ x
         return tmp
