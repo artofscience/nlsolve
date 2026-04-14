@@ -236,6 +236,25 @@ class IterativeSolver:
         self.logger = create_logger(self.__name__, logging_level, CustomFormatter())
         self.logger.info("Initializing an " + self.__class__.__name__ + " called " + self.__name__)
 
+    def solve(self, ddqf: np.ndarray, ddfp: np.ndarray, p: Point, y: float = 0.0):
+        # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
+        # note: for predictor ddx0 = 0, hence only a single rhs for this solve
+        if self.problem.nf:
+            # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
+            # Consider there is no equilibrium (yet)
+            ddqf[:, :] = np.linalg.solve(self.problem.kff(p, y),
+                                         np.array(
+                                             [-self.problem.rf(p), self.problem.loadf(p, y)]).T)
+
+        if self.problem.np:
+            ddfp[:, 0] = self.problem.rp(p)
+            ddfp[:, 1] = self.problem.loadp(p, y)
+            if self.problem.nf:
+                ddfp[:, 0] += self.problem.kpf(p, y) @ ddqf[:, 0]
+                ddfp[:, 1] += self.problem.kpf(p, y) @ ddqf[:, 1]
+
+        return ddqf, ddfp
+
     def __call__(self, sol: List[Point], y: float = 0.0, length: float = 0.0) -> Tuple[Point, float, int, List[Point]]:
         self.logger.debug("Starting iterative solver")
         self.converged.reset()
@@ -250,19 +269,10 @@ class IterativeSolver:
 
         # initialize structure of solve return values if free degrees of freedom
         ddqf = np.zeros((self.problem.nf, 2), dtype=float) if self.problem.nf else None
-
-        # solve the system of equations [-kff @ ddx1 = ff + kfp @ up] at state = p
-        # note: for predictor ddx0 = 0, hence only a single rhs for this solve
-        if self.problem.nf:
-            # ddx[:, 1] = np.linalg.solve(self.nlf.kff(p), self.nlf.load(p))
-            # Consider there is no equilibrium (yet)
-            ddqf[:, :] = np.linalg.solve(self.problem.kff(p, y), np.array([-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
-
         ddfp = np.zeros((self.problem.np, 2), dtype=float) if self.problem.np else None
 
-        if self.problem.np:
-            ddfp[:, 0] = self.problem.rp(p, y) + self.problem.kpf(p, y) @ ddqf[:, 0]
-            ddfp[:, 1] = self.problem.loadp(p, y) + self.problem.kpf(p, y) @ ddqf[:, 1]
+        ddqf[:, :], ddfp[:, :] = self.solve(ddqf, ddfp, p, y)
+
 
         # call to the predictor of the constraint function returning iterative load parameter
         # note it has access to previous equilibrium points (sol) and dp = 0
@@ -275,7 +285,7 @@ class IterativeSolver:
 
         dp = self.ddp(p, ddqf, ddfp, y, ddy)  # calculate prediction based on iterative load parameter
         dy = 1.0 * ddy
-        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
+        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp))))
 
         # endregion
 
@@ -292,7 +302,7 @@ class IterativeSolver:
                 #                    counter.count)
                 break
 
-            if self.converged(self.problem, p + dp, y + dy, ddy):
+            if self.converged(self.problem, p + dp, ddy):
                 # terminate the loop if converged
                 break
 
@@ -302,14 +312,7 @@ class IterativeSolver:
 
             # region CORRECTOR
 
-            # solve the system of equations kff @ [ddx0, ddx1] = -[rf, ff + kfp @ up] at state = p + dp
-            if self.problem.nf:
-                ddqf[:, :] = np.linalg.solve(self.problem.kff(p + dp, y + dy),
-                                            np.array([-self.problem.rf(p + dp, y + dy), self.problem.loadf(p + dp, y + dy)]).T)
-
-            if self.problem.np:
-                ddfp[:, 0] = self.problem.rp(p + dp, y + dy) + self.problem.kpf(p + dp, y + dy) @ ddqf[:, 0]
-                ddfp[:, 1] = self.problem.loadp(p + dp, y + dy) + self.problem.kpf(p + dp, y + dy) @ ddqf[:, 1]
+            ddqf[:, :], ddfp[:, :] = self.solve(ddqf, ddfp, p + dp, y + dy)
 
             # calculate correction of proportional load parameter
             # note: p and dp are passed independently (instead of p + dp), as dp is used for root selection
@@ -323,7 +326,7 @@ class IterativeSolver:
             dy += ddy
 
             self.logger.debug(
-                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
+                "Corrector %d: ddy = %+e, norm(r) = %+e" % (counter.count, ddy, np.linalg.norm(self.problem.r(p + dp))))
 
 
             # endregion

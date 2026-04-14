@@ -69,14 +69,14 @@ class Problem(ABC):
     def gf(self, p: Point) -> State:
         return self.g(p)[self.ixf]
 
-    def r(self, p: Point, y: float = 0.0) -> State:
+    def r(self, p: Point) -> State:
         return self.g(p) - p.f
 
-    def rf(self, p: Point, y: float = 0.0) -> State:
-        return self.r(p, y)[self.ixf]
+    def rf(self, p: Point) -> State:
+        return self.r(p)[self.ixf]
 
-    def rp(self, p: Point, y: float = 0.0) -> State:
-        return self.r(p, y)[self.ixp]
+    def rp(self, p: Point) -> State:
+        return self.r(p)[self.ixp]
 
     def dg(self, p: Point, y: float = 0.0) -> State:
         return self.nlf.jacobian(p.q, y)
