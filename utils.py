@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from copy import deepcopy
 
 import numpy as np
@@ -45,24 +45,17 @@ class Problem(ABC):
         self.np = len(self.ixp)
         self.n = self.nf + self.np
 
-        self.ffc = ff.astype(float) if ff is not None else np.zeros(self.nf)
-        self.qpc = qp.astype(float) if qp is not None else np.zeros(self.np)
+    @abstractmethod
+    def external_load(self, p: Point):
+        pass
 
-        # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
-        self.qp2 = np.dot(self.qpc, self.qpc) if self.np else None
-
-    def set_load(self, ff=None, qp=None):
-        self.ffc = ff.astype(float) if ff is not None else np.zeros(self.nf)
-        self.qpc = qp.astype(float) if qp is not None else np.zeros(self.np)
-
-        # squared norm of load external load and prescribed motion
-        self.ff2 = np.dot(self.ffc, self.ffc) if self.nf else None
-        self.qp2 = np.dot(self.qpc, self.qpc) if self.np else None
+    @abstractmethod
+    def external_state(self, p: Point):
+        pass
 
     def load(self, p: Point) -> State:
-        load = 1.0 * self.ffc
-        load -= self.kfp(p) @ self.qpc if self.np else 0.0  # adds to rhs if nonzero prescribed dof
+        load = 1.0 * self.external_load(p)
+        load -= self.kfp(p) @ self.external_state(p) if self.np else 0.0  # adds to rhs if nonzero prescribed dof
         return load
 
     def g(self, p: Point) -> State:

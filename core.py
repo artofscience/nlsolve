@@ -334,10 +334,10 @@ class IterativeSolver:
 
         if self.problem.nf:
             ddqf = u[:, 0] + y * u[:, 1]
-            ddff = y * self.problem.ffc
+            ddff = y * self.problem.external_load(p)
         if self.problem.np:
-            ddqp = y * self.problem.qpc
-            ddfp = self.problem.rp(p) + y * self.problem.kpp(p) @ self.problem.qpc
+            ddqp = y * self.problem.external_state(p)
+            ddfp = self.problem.rp(p) + y * self.problem.kpp(p) @ self.problem.external_state(p)
             ddfp += self.problem.kpf(p) @ ddqf if self.problem.nf else 0.0
 
         return self.problem.point(ddqf, ddqp, ddff, ddfp)
@@ -361,14 +361,14 @@ class IterativeSolver:
         a = 0.0
         if self.problem.nf:
             tmp1 = self.cqf * u[:, 1]
-            tmp2 = self.cff * self.problem.ffc
+            tmp2 = self.cff * self.problem.external_load(p)
             a += np.dot(tmp1, tmp1) + np.dot(tmp2, tmp2)
         if self.problem.np:
-            tmpa = self.problem.kpp(p) @ self.problem.qpc
+            tmpa = self.problem.kpp(p) @ self.problem.external_state(p)
             if self.problem.nf:
                 tmpa += self.problem.kpf(p) @ u[:, 1]
             tmp3 = self.cfp * tmpa
-            tmp4 = self.cqp * self.problem.qpc
+            tmp4 = self.cqp * self.problem.external_state(p)
             a += np.dot(tmp3, tmp3) + np.dot(tmp4, tmp4)
 
         return np.array([1, -1]) * dl / np.sqrt(a)
@@ -383,7 +383,7 @@ class IterativeSolver:
 
         if nlf.nf:
             tmp1 = self.cqf * u[:,1]
-            tmp2 = self.cff * nlf.ffc
+            tmp2 = self.cff * nlf.external_load(p)
             tmp5 = self.cqf * (nlf.qf(dp) + u[:, 0])
             tmp8 = self.cff * nlf.ff(dp)
 
@@ -394,12 +394,12 @@ class IterativeSolver:
             a[2] += np.dot(tmp5, tmp5)
             a[2] += np.dot(tmp8, tmp8)
         if nlf.np:
-            tmp3 = self.cqp * nlf.qpc
+            tmp3 = self.cqp * nlf.external_state(p)
             tmp6 = self.cqp * nlf.qp(dp)
             a[0] += np.dot(tmp3, tmp3)
             a[1] += 2 * np.dot(tmp3, tmp6)
             a[2] += np.dot(tmp6, tmp6)
-            tmpa = nlf.kpp(p + dp) @ nlf.qpc
+            tmpa = nlf.kpp(p + dp) @ nlf.external_state(p)
             tmpc = nlf.fp(dp) + nlf.rp(p + dp)
             if nlf.nf:
                 tmpa += nlf.kpf(p + dp) @ u[:, 1]
