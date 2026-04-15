@@ -244,11 +244,11 @@ class IterativeSolver:
             # Consider there is no equilibrium (yet)
             ddqf[:, :] = np.linalg.solve(self.problem.kff(p, y),
                                          np.array(
-                                             [-self.problem.rf(p, y), self.problem.loadf(p, y)]).T)
+                                             [-self.problem.rf(p, y), self.problem.loadf(p)]).T)
 
         if self.problem.np:
-            ddfp[:, 0] = self.problem.rp(p, y)
-            ddfp[:, 1] = self.problem.loadp(p, y)
+            ddfp[:, 0] = self.problem.rp(p)
+            ddfp[:, 1] = self.problem.loadp(p)
             if self.problem.nf:
                 ddfp[:, 0] += self.problem.kpf(p, y) @ ddqf[:, 0]
                 ddfp[:, 1] += self.problem.kpf(p, y) @ ddqf[:, 1]
