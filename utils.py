@@ -54,7 +54,6 @@ class Problem(ABC):
     def jac_external_state(self, p: Point):
         return None
 
-    @abstractmethod
     def jac_external_load(self, p: Point):
         return None
 
@@ -95,17 +94,17 @@ class Problem(ABC):
         return self.dg(p)[self.ixp, :][:, self.ixf]
 
     def kff(self, p: Point, y: float = 0.0):
-        tmp = self.dgff(p) - y * self.jac_external_load(p)
-        # if self.jac_external_load(p) is not None:
-        #     tmp -= y * self.jac_external_load(p)
-        # if x := self.jac_external_state(p) is not None:
-        #     tmp += y * self.dgfp(p, y) @ x
+        tmp = self.dgff(p)
+        if self.jac_external_load(p) is not None:
+            tmp -= y * self.jac_external_load(p)
+        if x := self.jac_external_state(p) is not None:
+            tmp += y * self.dgfp(p) @ x
         return tmp
 
     def kpf(self, p: Point, y: float = 0.0) -> State:
         tmp = self.dgpf(p)
-        # if x := self.jac_external_state(p) is not None:
-        #     tmp += y * self.dgpp(p, y) @ x
+        if x := self.jac_external_state(p) is not None:
+            tmp += y * self.dgpp(p) @ x
         return tmp
 
     def loadf(self, p: Point) -> State:
