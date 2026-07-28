@@ -7,7 +7,7 @@ from constraints import GeneralizedArcLength, NewtonRaphson
 from core import IncrementalSolver, IterativeSolver
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
-from examples.active_springs.spring import SpringK
+from active_springs.spring import SpringK
 from utils import Problem, Point
 
 

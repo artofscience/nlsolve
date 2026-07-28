@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 
 from constraints import NewtonRaphson, GeneralizedArcLength
 from core import IncrementalSolver, IterativeSolver
-from examples.active_springs.spring import SpringL0
+from active_springs.spring import SpringL0
 from utils import Problem, Point
 from criteria import termination_default, EigenvalueChangeTermination
 from dynamics import DynamicsSolver
