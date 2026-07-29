@@ -306,7 +306,7 @@ class IterativeSolver:
                 # terminate the loop if converged
                 break
 
-            if counter.count > 10:
+            if counter.count > 20:
                 # raise error if diverged
                 raise DivergenceError("Solver diverged!", counter.count)
 
