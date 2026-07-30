@@ -208,7 +208,7 @@ class IterativeSolver:
     def __init__(self, problem: Problem,
                  converged=None, diverged=None,
                  name: str = None, logging_level: int = logging.DEBUG,
-                 maximum_corrections: int = 1000) -> None:
+                 maximum_corrections: int = 1000, c=[1.0, 1.0, 1.0, 1.0]) -> None:
         """
         Initialization of the iterative solver.
 
@@ -224,10 +224,10 @@ class IterativeSolver:
         # self.constraint = constraint if constraint is not None else GeneralizedArcLength()  # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
 
-        self.cqf = 1.0
-        self.cqp = 1.0
-        self.cff = 1.0
-        self.cfp = 1.0
+        self.cqf = c[0]
+        self.cqp = c[1]
+        self.cff = c[2]
+        self.cfp = c[3]
 
         self.default_positive_direction = True
 
@@ -285,7 +285,7 @@ class IterativeSolver:
 
         dp = self.ddp(p, ddqf, ddfp, y, ddy)  # calculate prediction based on iterative load parameter
         dy = 1.0 * ddy
-        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + dy))))
+        self.logger.debug("Predictor 0: ddy = %+e, norm(r) = %+e" % (ddy, np.linalg.norm(self.problem.r(p + dp, y + ddy))))
 
         # endregion
 
@@ -393,22 +393,23 @@ class IterativeSolver:
         if nlf.nf:
             tmp = nlf.qf(dp) + ddqf[:, 0]
 
-            a[0] += np.dot(ddqf[:, 1], ddqf[:, 1])
-            a[0] += np.dot(nlf.external_load(p), nlf.external_load(p))
-            a[1] += 2 * np.dot(ddqf[:, 1], tmp)
-            a[1] += 2 * np.dot(nlf.ff(dp), nlf.external_load(p))
-            a[2] += np.dot(tmp, tmp)
-            a[2] += np.dot(nlf.ff(dp), nlf.ff(dp))
+            a[0] += self.cqf * np.dot(ddqf[:, 1], ddqf[:, 1])
+            a[1] += self.cqf * 2 * np.dot(ddqf[:, 1], tmp)
+            a[2] += self.cqf * np.dot(tmp, tmp)
+
+            a[0] += self.cff * np.dot(nlf.external_load(p), nlf.external_load(p))
+            a[1] += self.cff * 2 * np.dot(nlf.ff(dp), nlf.external_load(p))
+            a[2] += self.cff * np.dot(nlf.ff(dp), nlf.ff(dp))
         if nlf.np:
-            a[0] += np.dot(nlf.external_state(p), nlf.external_state(p))
-            a[1] += 2 * np.dot(nlf.external_state(p), nlf.qp(dp))
-            a[2] += np.dot(nlf.qp(dp), nlf.qp(dp))
+            a[0] += self.cqp * np.dot(nlf.external_state(p), nlf.external_state(p))
+            a[1] += self.cqp * 2 * np.dot(nlf.external_state(p), nlf.qp(dp))
+            a[2] += self.cqp * np.dot(nlf.qp(dp), nlf.qp(dp))
 
             tmp = nlf.fp(dp) + ddfp[:, 0]
 
-            a[0] += np.dot(ddfp[:, 1], ddfp[:, 1])
-            a[1] += 2 * np.dot( ddfp[:, 1], tmp)
-            a[2] += np.dot(tmp, tmp)
+            a[0] += self.cfp * np.dot(ddfp[:, 1], ddfp[:, 1])
+            a[1] += self.cfp * 2 * np.dot( ddfp[:, 1], tmp)
+            a[2] += self.cfp * np.dot(tmp, tmp)
 
         if (d := a[1] ** 2 - 4 * a[0] * a[2]) <= 0:
             raise ValueError("Discriminant of quadratic constraint equation is not positive!")
