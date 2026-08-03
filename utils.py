@@ -73,7 +73,7 @@ class Problem(ABC):
         return tmp
 
     def rf(self, p: Point, y: float = 0.0) -> State:
-        return self.gf(p) - y * self.external_load(p)
+        return self.gf(p) - self.ff(p)
 
     def rp(self, p: Point) -> State:
         return self.gp(p) - self.fp(p)
