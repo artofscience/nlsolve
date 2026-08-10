@@ -94,9 +94,6 @@ class IncrementalSolver:
         if controller is not None:
             self.controller = controller
 
-        # if constraint is not None:
-        #     self.solution_method.constraint = constraint
-
         if reset is not None:
             self.reset = reset
 
@@ -221,7 +218,6 @@ class IterativeSolver:
         self.converged = converged if converged is not None else residual_norm(1e-10)
         self.diverged = diverged if diverged is not None else divergence_default()
         self.problem: Problem = problem  # nonlinear system of equations
-        # self.constraint = constraint if constraint is not None else GeneralizedArcLength()  # constraint function used (operates on nlf)
         self.maximum_corrections: int = maximum_corrections  # maximum allowed number of iterates before premature termination
 
         self.cqf = c[0]
@@ -296,19 +292,12 @@ class IterativeSolver:
         # make corrections until termination criteria are met
         while True:
             if counter:
-                self.logger.error("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold),
-                                   counter.count)
-                # raise CounterError("Maximum number of corrections %2d > %2d" % (counter.count, counter.threshold),
-                #                    counter.count)
-                break
+                self.logger.error("Maximum number of corrections %d > %d" % (counter.count, counter.threshold))
+                raise DivergenceError("Solver diverged!", counter.count)
 
             if self.converged(self.problem, p + dp, y + dy, ddy):
                 # terminate the loop if converged
                 break
-
-            if counter.count > 20:
-                # raise error if diverged
-                raise DivergenceError("Solver diverged!", counter.count)
 
             # region CORRECTOR
 
